@@ -92,8 +92,9 @@ P=${CLAUDE_SKILL_DIR}/templates/background-session.settings.json
   `notify_when_idle: true` (the notice arrives once when it goes idle or exits, without spending its tokens, and expires
   in 12 h; renew it when resuming). Cron only as a net when the notice is not possible, every 60 min, deleted when the
   last session closes. The tick (§9) is a different cron.
-- **Closed, stop it:** a session that delivered the final report and whose commit was checked exits with `"$C" stop <id>`.
-  A closed session that stays `blocked` in the list confuses the next coordinator and the duplicate check.
+- **Closed, stop it and close it:** a session that delivered the final report and whose commit was checked exits with
+  `"$C" stop <id>`, and then its state goes at once with the close (§3). A closed session that stays `blocked` in the
+  list confuses the next coordinator and the duplicate check.
 - **New front, new session:** never send a second front to a session that already closed its own, nor reopen it by
   `--resume` for another front: it would reread the whole context of the previous one on every call. `--resume` is only
   to continue the SAME front.
@@ -116,7 +117,22 @@ P=${CLAUDE_SKILL_DIR}/templates/background-session.settings.json
   `handoff/coordenadora.md`), rename them with `mv` to `queue.md`, `queue-archive/`, `window.md` and
   `handoff/coordinator.md` before continuing, and tell the owner in one line.
 
-**Cleanup is automatic:** at every session start the plugin's sweep hook removes, in every project's `$D`, what the
+**Close each front at once.** When a front is stopped and its commit checked (or, in a stacked round, when the gate
+is green), the coordinator runs:
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/../../scripts/coordination-sweep.py --close <name> --state "$D" --checkout "$CHECKOUT" --sha <shas> --dry-run
+```
+
+and then the same line without `--dry-run`. It removes `logs/<name>/`, the assembled prompt, `prompts/<name>.md`,
+`handoff/<name>.md`, the scratch of its job, its worktree and branch, and its lines in `window.md`; `queue.md` keeps
+one `<name> <sessionId> <shas> closed <date>` line, which the gate and the next coordinator read. It refuses a live
+session, keeps what the open state or a live front cites, and keeps prints, videos and PDFs until `--sent`: send the
+ones the owner still needs with `SendUserFile` first. The project's own cleanup (test databases, queues, servers the
+front started) is the profile's list, which the close prints for the coordinator to run. Then move the front's diary
+lines of `queue.md` to `queue-archive/`.
+
+**The sweep is the net:** at every session start the plugin's sweep hook removes, in every project's `$D`, what the
 table marks, counted from the entry's last change. What stays at any age: what belongs to a session alive in
 `agents --json` (when the list can't be read, age alone decides), and what `queue.md`, `window.md` or
 `handoff/coordinator.md` cite by path (`logs/<name>`, `prompts/<name>`, `handoff/<name>`). So a tool, evidence or

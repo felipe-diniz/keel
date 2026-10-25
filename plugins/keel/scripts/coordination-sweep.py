@@ -15,6 +15,13 @@ In the session's repo: the safety refs `refs/keel/backup/<YYYY-MM-DD>-<what>` ol
 
 It prints one line only when it removed something. An internal failure stays quiet.
 
+`--close <session> --state <D> [--checkout <repo>] [--sha <sha>...] [--sent] [--dry-run]` is the coordinator's close
+of one front, at once and regardless of age: `logs/<session>/`, the assembled prompt, `prompts/<session>.md` (and the
+front's `prompts/<front>.md` when it is not a phase), `handoff/<session>.md`, the scratch of its job, its worktrees
+and branch in the checkout, and its lines in `window.md`; `queue.md` keeps one `<session> <sessionId> <shas> closed`
+line. It refuses a live session or an unreadable agents list, keeps what the open state or a live front cites, keeps
+the owner's media until `--sent`, and shows (never runs) the profile's cleanup list.
+
 Usage: no argument runs the sweep; `--self-test` runs the scenarios in a temporary home.
 """
 import datetime
@@ -208,9 +215,265 @@ def report(files, refs):
     return "keel sweep: removed " + " and ".join(parts) + ".\n"
 
 
-def main():
-    if sys.argv[1:] == ["--self-test"]:
+# --- --close <session>: everything a closed front leaves, at once -----------------------------------------------------
+
+OWNER_MEDIA = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".mp4", ".webm", ".mov", ".pdf", ".zip")
+DEAD_STATES = ("done", "stopped", "failed")
+PHASE = re.compile(r"-(phase|fase)\d+$")
+CLEANUP_HEADINGS = ("## cleanup at front close", "## limpeza ao fechar a frente")
+
+
+def cites(name, text):
+    return re.search(r"(?<![\w.-])" + re.escape(name) + r"(?![\w-])", text) is not None
+
+
+def read_agents(path):
+    """The full agents list (live and dead), or None when it can't be read."""
+    try:
+        if path:
+            with open(path, encoding="utf-8") as handle:
+                data = json.load(handle)
+        else:
+            binary = claude_binary()
+            if not binary:
+                return None
+            result = subprocess.run([binary, "agents", "--json", "--all"], capture_output=True, text=True, timeout=30)
+            data = json.loads(result.stdout)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    return [item for item in data if isinstance(item, dict)] if isinstance(data, list) else None
+
+
+def agent_live(item):
+    return item.get("state") not in DEAD_STATES and ("pid" in item or item.get("status") in ("busy", "idle"))
+
+
+def read_text(path):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            return handle.read()
+    except OSError:
+        return ""
+
+
+def close_targets(state, session):
+    """(relative path, absolute path) of the coordination state that belongs to the session."""
+    names = [os.path.join("logs", session), os.path.join("logs", session + PROMPT_SUFFIX),
+             os.path.join("prompts", session + ".md"), os.path.join("handoff", session + ".md")]
+    if not PHASE.search(session):
+        for name in sorted(os.listdir(os.path.join(state, "prompts"))) if os.path.isdir(
+                os.path.join(state, "prompts")) else []:
+            front = name[:-3] if name.endswith(".md") else None
+            if front and not front.startswith("_") and front != session and session.endswith("-" + front):
+                names.append(os.path.join("prompts", name))
+    protected = ("handoff/coordinator.md", "handoff/coordenadora.md")
+    return [(rel, os.path.join(state, rel)) for rel in names
+            if rel.replace(os.sep, "/") not in protected and os.path.lexists(os.path.join(state, rel))]
+
+
+def remove_entry(path, keep_media, dry_run):
+    """Removes a file or a tree; with keep_media the owner's files stay. Returns (bytes, kept media paths)."""
+    kept, size = [], 0
+    if os.path.isdir(path) and not os.path.islink(path):
+        for base, dirs, files in os.walk(path, topdown=False):
+            for name in files:
+                full = os.path.join(base, name)
+                if keep_media and name.lower().endswith(OWNER_MEDIA):
+                    kept.append(full)
+                    continue
+                size += os.lstat(full).st_size
+                if not dry_run:
+                    os.unlink(full)
+            for name in dirs:
+                full = os.path.join(base, name)
+                if not dry_run and os.path.islink(full):
+                    os.unlink(full)
+                elif not dry_run and not os.listdir(full):
+                    os.rmdir(full)
+        if not dry_run and not kept:
+            shutil.rmtree(path, ignore_errors=True)
+        return size, kept
+    if keep_media and path.lower().endswith(OWNER_MEDIA):
+        return 0, [path]
+    size = os.lstat(path).st_size
+    if not dry_run:
+        os.unlink(path)
+    return size, kept
+
+
+def edit_window(state, session, others, dry_run):
+    """Drops the window lines that cite only this session; returns (dropped, left) lines."""
+    path = os.path.join(state, "window.md")
+    if not os.path.isfile(path):
+        return [], []
+    lines = read_text(path).splitlines(keepends=True)
+    keep, dropped, left = [], [], []
+    for line in lines:
+        if cites(session, line):
+            if any(cites(other, line) for other in others):
+                left.append(line.strip())
+                keep.append(line)
+            else:
+                dropped.append(line.strip())
+            continue
+        keep.append(line)
+    if dropped and not dry_run:
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.writelines(keep)
+    return dropped, left
+
+
+def edit_queue(state, session, session_id, shas, dry_run):
+    """Leaves one `<session> <sessionId> <shas> closed <date>` line; returns it and the other lines that cite it."""
+    path = os.path.join(state, "queue.md")
+    lines = read_text(path).splitlines(keepends=True)
+    others = [line.strip() for line in lines if cites(session, line) and not line.startswith(session + " ")]
+    if not shas:
+        return None, others
+    entry = " ".join([session, session_id or "-"] + list(shas) + ["closed", datetime.date.today().isoformat()])
+    body = [line for line in lines if not line.startswith(session + " ")]
+    if body and not body[-1].endswith("\n"):
+        body[-1] += "\n"
+    if not dry_run:
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.writelines(body + [entry + "\n"])
+    return entry, others
+
+
+def front_worktrees(checkout, session, job_dirs):
+    """(path, branch) of the checkout's worktrees that belong to the session."""
+    result = git(checkout, "worktree", "list", "--porcelain")
+    if result.returncode != 0:
+        return []
+    found, path, branch = [], None, None
+    for line in result.stdout.splitlines() + [""]:
+        if line.startswith("worktree "):
+            path, branch = line[len("worktree "):], None
+        elif line.startswith("branch "):
+            branch = line[len("branch refs/heads/"):]
+        elif not line and path:
+            mine = os.path.basename(path.rstrip("/")) == session or branch in (session, "worktree-" + session) \
+                or any(path.startswith(job + os.sep) for job in job_dirs)
+            if mine and os.path.realpath(path) != os.path.realpath(checkout):
+                found.append((path, branch))
+            path, branch = None, None
+    return found
+
+
+def profile_cleanup(checkout, session):
+    """The commands of the profile's cleanup section, with the session name in place."""
+    text = read_text(os.path.join(checkout, ".claude", "coordination", "profile.md"))
+    commands, inside = [], False
+    for line in text.splitlines():
+        if line.startswith("## "):
+            inside = line.strip().lower() in CLEANUP_HEADINGS
+            continue
+        if inside:
+            commands += [c.replace("<SESSION-NAME>", session) for c in re.findall(r"`([^`]+)`", line)[:1]]
+    return commands
+
+
+def close(argv):
+    import argparse
+    parser = argparse.ArgumentParser(prog="coordination-sweep.py --close")
+    parser.add_argument("--close", required=True, metavar="SESSION")
+    parser.add_argument("--state", required=True, help="the coordination state directory ($D)")
+    parser.add_argument("--checkout", help="the project checkout: its worktrees and the profile's cleanup list")
+    parser.add_argument("--sha", nargs="+", default=[], help="the front's commits, kept as one line in queue.md")
+    parser.add_argument("--sent", action="store_true", help="the owner's files were sent: remove them too")
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--agents-file", help=argparse.SUPPRESS)
+    parser.add_argument("--jobs-root", default=os.path.expanduser("~/.claude/jobs"), help=argparse.SUPPRESS)
+    args = parser.parse_args(argv)
+    session, state, dry = args.close, os.path.abspath(os.path.expanduser(args.state)), args.dry_run
+    head = "keel close {}{}:".format(session, " (dry run)" if dry else "")
+
+    agents = read_agents(args.agents_file)
+    if agents is None:
+        return head + " agents list unreadable; nothing removed (a live front could lose its state)"
+    mine = sorted((a for a in agents if a.get("name") == session), key=lambda a: a.get("startedAt") or 0)
+    if any(agent_live(a) for a in mine):
+        return head + " the session is still live; stop it first (`claude stop <id>`), nothing removed"
+    others = {a["name"] for a in agents if agent_live(a) and isinstance(a.get("name"), str) and a["name"] != session}
+    session_id = mine[-1].get("sessionId") if mine else None
+
+    guard = open_state(state)
+    if guard is None:
+        return head + " open state unreadable; nothing removed"
+    for other in sorted(others):
+        guard += "\n" + read_text(os.path.join(state, "handoff", other + ".md"))
+        guard += "\n" + read_text(os.path.join(state, "prompts", other + ".md"))
+
+    verb = "would remove" if dry else "removed"
+    removed, kept, media = [], [], []
+    for rel, path in close_targets(state, session):
+        if rel.replace(os.sep, "/") in guard:
+            kept.append(rel + " (cited by the open state or a live front)")
+            continue
+        try:
+            size, owner_files = remove_entry(path, not args.sent, dry)
+        except OSError as error:
+            kept.append("{} ({})".format(rel, error.strerror))
+            continue
+        removed.append("{} ({:.1f} KB{})".format(rel, size / 1024, ", owner files kept" if owner_files else ""))
+        media += [os.path.relpath(f, state) for f in owner_files]
+
+    job_dirs = [os.path.join(args.jobs_root, a["sessionId"][:8]) for a in mine if a.get("sessionId")]
+    for job in job_dirs:
+        scratch = os.path.join(job, "tmp")
+        if os.path.isdir(scratch) and os.listdir(scratch):
+            if not dry:
+                for name in os.listdir(scratch):
+                    target = os.path.join(scratch, name)
+                    shutil.rmtree(target) if os.path.isdir(target) and not os.path.islink(target) else os.unlink(target)
+            removed.append("scratch {}".format(scratch))
+
+    lines = []
+    if args.checkout:
+        checkout = os.path.abspath(os.path.expanduser(args.checkout))
+        for path, branch in front_worktrees(checkout, session, job_dirs):
+            if dry:
+                removed.append("worktree {}".format(path))
+                continue
+            if git(checkout, "worktree", "remove", path).returncode != 0:
+                lines.append("worktree left (uncommitted changes or locked): {}".format(path))
+                continue
+            removed.append("worktree {}".format(path))
+            if branch and git(checkout, "branch", "-d", branch).returncode == 0:
+                removed.append("branch {}".format(branch))
+            elif branch:
+                lines.append("branch {} left (not merged into HEAD)".format(branch))
+        cleanup = profile_cleanup(checkout, session)
+        if cleanup:
+            lines.append("run (the profile's cleanup list): " + "; ".join(cleanup))
+
+    dropped, left = edit_window(state, session, others, dry)
+    if dropped:
+        lines.append("window.md: {} {} line(s): {}".format(verb, len(dropped), " / ".join(dropped)))
+    if left:
+        lines.append("window.md: shared line(s) left, edit by hand: " + " / ".join(left))
+    entry, cited_lines = edit_queue(state, session, session_id, args.sha, dry)
+    if entry:
+        lines.append("queue.md: " + entry)
+    if cited_lines:
+        lines.append("queue.md still cites it ({} line(s)): move what closed to queue-archive/".format(len(cited_lines)))
+    if media:
+        shown = ", ".join(media[:5]) + (" and {} more".format(len(media) - 5) if len(media) > 5 else "")
+        lines.append("owner files kept ({}): {}; send what the owner needs with SendUserFile, then rerun with --sent"
+                     .format(len(media), shown))
+    out = [head + " " + ("{} {}".format(verb, ", ".join(removed)) if removed else "nothing to remove")]
+    if kept:
+        out.append("kept: " + ", ".join(kept))
+    return "\n".join(out + lines)
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if argv == ["--self-test"]:
         sys.exit(self_test())
+    if "--close" in argv:
+        print(close(argv))
+        return 0
     try:
         try:
             cwd = json.load(sys.stdin).get("cwd") or os.getcwd()

@@ -40,6 +40,13 @@ remote first? generate a file that only the tool writes?>. Message: <commitlint 
 | <heavy suite, measurement bench, test database> | <one machine, results disturbed by a parallel run> | the integration gate's; a critical front only with the window |
 | <shared indexes: i18n, MEMORY.md, CLAUDE.md, risk doc, barrels> | several sessions in the same file | surgical insertion reread on the spot; commit per hunk |
 
+## Cleanup at front close
+
+<!-- One backticked command per line, printed (never run) by `coordination-sweep.py --close`; `<SESSION-NAME>` is
+replaced. What the front leaves outside the coordination state: test databases, Redis/queue keys, servers or
+containers it started, generated files outside git. -->
+- `<command>`: <what it removes>
+
 ## Owner approval first, always through the coordinator
 
 <database change, backfill, bulk script, secret/env, business rule, guard, production — what CLAUDE.md lists>.
