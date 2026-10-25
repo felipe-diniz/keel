@@ -54,6 +54,7 @@ Agent teams (experimental) do not isolate the worktree nor resume: they do not r
 ```bash
 C=$(command -v claude || ls ~/.local/bin/claude 2>/dev/null || ls -d ~/.vscode{,-server}/extensions/anthropic.claude-code-*/resources/native-binary/claude 2>/dev/null | sort -V | tail -1)
 P=${CLAUDE_SKILL_DIR}/templates/background-session.settings.json
+git -C "$CHECKOUT" worktree add --detach "$CHECKOUT/.claude/worktrees/<name>" <remote>/<branch>   # cd into it
 "$C" --bg -n <name> --settings "$P" --add-dir "$D" --permission-mode auto "$(cat "$D/logs/<name>.prompt.md")"
 "$C" agents --json --cwd "$CHECKOUT"   # name, sessionId, state (busy, idle, working, blocked: waiting for permission or stopped)
 "$C" logs <id|name>                    # recent output (raw TUI: filter the ANSI codes)
@@ -62,8 +63,9 @@ P=${CLAUDE_SKILL_DIR}/templates/background-session.settings.json
 "$C" --bg --resume <sessionId> -n <name> --settings "$P" --add-dir "$D" --permission-mode auto "<what changed and the next step>"
 ```
 
-- **The details** (variadic `--add-dir`, the lean profile, inherited model and effort, no worktree, `NX_*`, resume
-  copies): [references/launch.md](references/launch.md). Never `--model` or `--effort` on a front.
+- **Each front in its own worktree**, launched from inside it; never in the checkout, which only moves by
+  fast-forward. Details (variadic `--add-dir`, the lean profile,
+  inherited model and effort, the worktree, `NX_*`, resume copies): [references/launch.md](references/launch.md).
 - **Name:** `<profile prefix>-<front>[-phase<n>]`, the same in the prompt, in `window.md` and in the report.
 - **Talking:** `SendMessage` to the NAME; `ListAgents` shows the names, the coordinator's included (it changes with each
   session: check before building a prompt and warn the active ones if it changes). A message to an idle session wakes it
@@ -92,8 +94,9 @@ P=${CLAUDE_SKILL_DIR}/templates/background-session.settings.json
 | `handoff/coordinator.md` | the coordinator checkpoint (§9): decisions in progress, next step, live sessions with name and id | ~2 KB | never |
 
 **Close each front at once** when it is stopped and its commit checked (in a stacked round, after the green gate):
-`coordination-sweep.py --close <name> --dry-run`, then without it. It removes the front's logs, prompt, HANDOFF, job
-scratch, worktree and `window.md` lines, leaves one `<name> <sessionId> <shas> closed` line in `queue.md`, keeps prints
+`coordination-sweep.py --close <name> --dry-run`, then without it. It refuses when the checkout's `git status` holds a
+file of the front's commits, removes the front's logs, prompt, HANDOFF, job scratch, worktree and `window.md` lines,
+fast-forwards the clean checkout, leaves one `<name> <sessionId> <shas> closed` line in `queue.md`, keeps prints
 and videos until they are sent with `SendUserFile`, and prints the profile's cleanup list to run. The sweep hook at every
 session start removes by age what the table marks, as the net. Command and rules:
 [references/cleanup.md](references/cleanup.md). Nobody deletes state by hand.
@@ -155,14 +158,14 @@ The coordinator grants and records it in `window.md`.
 
 - **The session commits** only what is its own, after its focused proof (§7), in the mode the profile declares
   ([references/commit-by-index.md](references/commit-by-index.md), with the holes already paid for):
-  - **direct** — the front session is the only one alive and the tree has no one else's WIP on its paths: proof in the
-    tree itself and `git commit -m "<msg>" -- <explicit list>` (the `--` with paths takes only those, even with
-    something else staged). It is the fastest: no worktree.
-  - **split** — there is another live session or someone else's WIP: temporary index + `commit-tree`, the focused
+  - **direct** — in the front's own worktree: proof in it and `git commit -m "<msg>" -- <explicit list>` (the `--`
+    with paths takes only those, even with something else staged).
+  - **split** — only in a shared tree (the coordinator's own fix in a dirty checkout): temporary index + `commit-tree`,
     proof in a clean worktree at the sha and `update-ref` with CAS over the checked parent.
   Message: the project's commit rule, one line, no body, no trailer, no co-authoring, no amend.
-- **The commits stack on the working branch** and wait for the coordinator's integration gate; the push goes only
-  after it is green ([references/integration-gate.md](references/integration-gate.md)).
+- **The commits stack** in the integration worktree, each front's picked in closing order onto the remote branch, and
+  wait for the integration gate; the push goes only after it is green, and then the clean checkout is fast-forwarded
+  ([references/integration-gate.md](references/integration-gate.md)).
 - **Safety point before a rebase or any history rewrite:** a ref, never a branch:
   `git update-ref refs/keel/backup/<YYYY-MM-DD>-<what> HEAD`. It does not show in `git branch`, and the sweep removes it
   after 14 days; delete it earlier with `git update-ref -d` once the result is checked.

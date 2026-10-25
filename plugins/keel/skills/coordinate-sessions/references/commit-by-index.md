@@ -86,3 +86,7 @@ The pre-push hook runs in the tree you push from: from the checkout, another ses
 approves it). Push from a proof worktree at the sha. If the hooks directory is generated and not versioned (e.g.
 `.husky/_`), the hook does not exist in the worktree and a push without `-c core.hooksPath=<checkout>/<hooks dir>` skips
 the gate silently (2026-10-05). Never `--no-verify` without the owner's word. The project's exact command is in the profile.
+
+A push by sha (`git push <remote> <sha>:<branch>`) moves the remote and its tracking ref, never the checkout's branch.
+Fast-forward the checkout right after it when it is clean (`git merge --ff-only <remote>/<branch>`; `--close` does it):
+a checkout left behind shows every pushed file as changed or untracked, and the next front would start from it.

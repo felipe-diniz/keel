@@ -17,9 +17,22 @@ changing the launch command.
   `keel:critical-review`. Depth on a step is `ultrathink`. This rule holds by the file: an old copy of the skill in the
   context (or preserved by compaction) once ordered `--effort max` and opened four fronts at `max` (2026-10-16); before
   launching, check the command in the skill.
-- **In the checkout, no worktree to work in** when the profile says so (`"worktree": {"bgIsolation": "none"}` in the
-  repo's settings). A session that asks "Call EnterWorktree first": the key is gone; take it to the owner, do not accept
-  the worktree.
+- **Each front works in its own worktree, never in the checkout.** A front writing in the checkout, with commits whose
+  parent is the remote branch and a push by sha, leaves the checkout's branch behind and the front's files dirty in it:
+  a coordinator found 339 such files after nine fronts (2026-10-25). So the coordinator, before the launch:
+  ```bash
+  git -C "$CHECKOUT" fetch <remote> <branch>
+  git -C "$CHECKOUT" worktree add --detach "$CHECKOUT/.claude/worktrees/<name>" <remote>/<branch>
+  ```
+  then the steps the profile lists to prepare a worktree (install, generated files, caches it may copy), and launches
+  from inside it (`cd` there, then `"$C" --bg …`), so the session's cwd, `CLAUDE.md` and project skills are the
+  worktree's and `agents --cwd "$CHECKOUT"` still lists it. Named after the session, `--close` finds it; elsewhere,
+  pass `--worktree <path>`. Keep `"worktree": {"bgIsolation": "none"}` in the settings: with it Claude Code does not
+  make a second worktree of its own, on a new branch from the checkout's possibly stale HEAD. `.claude/worktrees/` goes
+  in the project's `.gitignore`. A session that asks "Call EnterWorktree first": the key is gone; take it to the owner.
+- **The checkout belongs to the owner and the coordinator.** No front writes there; the coordinator's own short fixes
+  go by a worktree too when the checkout is not clean. After each push the clean checkout is fast-forwarded
+  (`git merge --ff-only <remote>/<branch>`; `--close` does it), so it never drifts behind.
 - **`NX_WORKSPACE_ROOT_PATH` inherited:** the background session is born with that of the daemon that opened it, which
   may belong to another checkout. Every `nx` of the session and of the proof carries
   `NX_WORKSPACE_ROOT_PATH=<checkout or worktree> NX_DAEMON=false`.

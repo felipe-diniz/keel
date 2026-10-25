@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.4.1 — 2026-10-25
+
+- **Each front works in its own worktree, never in the checkout.** The coordinator makes it detached at the remote branch (`.claude/worktrees/<session>`) and launches the session from inside it; the front commits there directly. Before, fronts wrote in the checkout and committed with the remote branch as parent, and the push by sha moved the remote but not the checkout: after nine fronts the checkout showed 339 files that were already pushed.
+- **`--close` checks the checkout.** It refuses while the checkout's `git status` lists a file the front's `--sha` commits touched, and fast-forwards the checkout's branch to its upstream when no tracked file changed in it.
+- **`--close` removes the front's worktree for good.** A worktree named after the session, or given by `--worktree`, is forced out when each of its commits is on a remote branch, was picked onto the upstream or is one of the `--sha`, and no tracked file changed; untracked files that are not ignored need `--force-worktree`. A detached worktree with unintegrated commits stays: removing it would leave them only in the reflog.
+- The integration gate always runs in its own worktree, picking each front's commits in closing order onto the remote branch.
+
 ## 3.4.0 — 2026-10-25
 
 - **One integration gate, in the coordinator.** A front commits with focused proof (the tests of what changed, red seen, lint/typecheck of its files). The full suites, build, E2E, bench and screens run once per round, over every front's commits; the profile names the commands in its `## Commands` section.

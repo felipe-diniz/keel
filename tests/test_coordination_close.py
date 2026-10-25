@@ -192,3 +192,136 @@ def test_cli_prints_the_report(env, capsys):
                      "--jobs-root", str(env.jobs)])
     assert rc == 0
     assert f"keel close {S}" in capsys.readouterr().out
+
+
+def commit(repo, name, text, msg="c"):
+    (repo / name).write_text(text)
+    git(repo, "add", name)
+    git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", msg)
+    return git(repo, "rev-parse", "HEAD").stdout.strip()
+
+
+@pytest.fixture
+def remote(tmp_path):
+    """A bare origin, the main checkout on main tracking it, and a front worktree detached at origin/main."""
+    origin = tmp_path / "origin.git"
+    git(tmp_path, "init", "-q", "--bare", "-b", "main", str(origin))
+    repo = tmp_path / "checkout"
+    git(tmp_path, "clone", "-q", str(origin), str(repo))
+    git(repo, "checkout", "-q", "-b", "main")
+    commit(repo, "a.txt", "a\n")
+    git(repo, "push", "-q", "-u", "origin", "main")
+    wt = tmp_path / "wt" / S
+    git(repo, "worktree", "add", "-q", "--detach", str(wt), "origin/main")
+    return repo, wt
+
+
+def test_close_refuses_when_the_checkout_holds_the_front_files(env, remote):
+    repo, wt = remote
+    sha = commit(wt, "b.txt", "b\n")
+    (repo / "b.txt").write_text("draft\n")
+    out = env.run("--checkout", str(repo), "--sha", sha)
+    assert "b.txt" in out and "Nothing removed" in out
+    assert wt.exists() and (env.d / "logs" / S).exists()
+
+
+def test_close_ignores_checkout_files_the_front_did_not_touch(env, remote):
+    repo, wt = remote
+    git(wt, "push", "-q", "origin", commit(wt, "b.txt", "b\n") + ":main")
+    sha = git(wt, "rev-parse", "HEAD").stdout.strip()
+    (repo / "owner.txt").write_text("owner wip\n")
+    out = env.run("--checkout", str(repo), "--sha", sha)
+    assert "Nothing removed" not in out and not wt.exists()
+    assert (repo / "owner.txt").exists()
+
+
+def test_published_worktree_with_ignored_leftovers_is_forced_out(env, remote):
+    repo, wt = remote
+    commit(repo, ".gitignore", "cache/\n")
+    git(repo, "push", "-q", "origin", "main")
+    git(wt, "checkout", "-q", "--detach", "origin/main")
+    (wt / "cache").mkdir()
+    (wt / "cache" / "big.bin").write_text("x")
+    out = env.run("--checkout", str(repo))
+    assert not wt.exists() and "worktree " + str(wt) in out
+
+
+def test_unpublished_or_changed_worktree_stays(env, remote):
+    repo, wt = remote
+    commit(wt, "b.txt", "b\n")
+    out = env.run("--checkout", str(repo))
+    assert wt.exists() and "no remote branch" in out
+
+    git(wt, "checkout", "-q", "--detach", "origin/main")
+    (wt / "a.txt").write_text("changed\n")
+    (env.d / "logs" / S).mkdir()
+    out = env.run("--checkout", str(repo))
+    assert wt.exists() and "tracked file" in out
+
+
+def test_untracked_leftovers_need_force_worktree(env, remote):
+    repo, wt = remote
+    (wt / "notes.txt").write_text("leftover\n")
+    out = env.run("--checkout", str(repo))
+    assert wt.exists() and "notes.txt" in out and "--force-worktree" in out
+    (env.d / "logs" / S).mkdir()
+    env.run("--checkout", str(repo), "--force-worktree")
+    assert not wt.exists()
+
+
+def test_worktree_named_by_flag_goes(env, remote, tmp_path):
+    repo, _ = remote
+    other = tmp_path / "wt" / "anything"
+    git(repo, "worktree", "add", "-q", "--detach", str(other), "origin/main")
+    env.run("--checkout", str(repo), "--worktree", str(other))
+    assert not other.exists()
+
+
+def test_checkout_fast_forwards_after_the_push_by_sha(env, remote):
+    repo, wt = remote
+    sha = commit(wt, "b.txt", "b\n")
+    git(wt, "push", "-q", "origin", sha + ":main")
+    (repo / "owner.txt").write_text("untracked wip\n")
+    out = env.run("--checkout", str(repo), "--sha", sha)
+    assert git(repo, "rev-parse", "HEAD").stdout.strip() == sha
+    assert "fast-forwarded main by 1" in out and (repo / "owner.txt").exists()
+
+
+def test_checkout_with_tracked_changes_is_not_moved(env, remote):
+    repo, wt = remote
+    sha = commit(wt, "b.txt", "b\n")
+    git(wt, "push", "-q", "origin", sha + ":main")
+    before = git(repo, "rev-parse", "HEAD").stdout.strip()
+    (repo / "a.txt").write_text("owner edit\n")
+    out = env.run("--checkout", str(repo), "--sha", sha)
+    assert git(repo, "rev-parse", "HEAD").stdout.strip() == before
+    assert "not moved" in out and (repo / "a.txt").read_text() == "owner edit\n"
+
+
+def test_dry_run_does_not_fast_forward(env, remote):
+    repo, wt = remote
+    sha = commit(wt, "b.txt", "b\n")
+    git(wt, "push", "-q", "origin", sha + ":main")
+    before = git(repo, "rev-parse", "HEAD").stdout.strip()
+    out = env.run("--checkout", str(repo), "--dry-run")
+    assert "would fast-forward" in out and git(repo, "rev-parse", "HEAD").stdout.strip() == before
+
+
+def test_worktree_whose_commit_went_by_cherry_pick_goes(env, remote, tmp_path):
+    repo, wt = remote
+    sha = commit(wt, "b.txt", "b\n")
+    gate = tmp_path / "gate"
+    git(repo, "worktree", "add", "-q", "--detach", str(gate), "origin/main")
+    commit(gate, "c.txt", "c\n")
+    git(gate, "-c", "user.name=t", "-c", "user.email=t@t", "cherry-pick", sha)
+    git(gate, "push", "-q", "origin", "HEAD:main")
+    git(repo, "worktree", "remove", str(gate))
+    out = env.run("--checkout", str(repo))
+    assert not wt.exists(), out
+
+
+def test_worktree_whose_commit_is_given_by_sha_goes(env, remote):
+    repo, wt = remote
+    sha = commit(wt, "b.txt", "b\n")
+    out = env.run("--checkout", str(repo), "--sha", sha[:9])
+    assert not wt.exists(), out

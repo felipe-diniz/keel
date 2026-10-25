@@ -18,11 +18,16 @@ Then the same line without `--dry-run`. In a stacked round the close waits for t
 | `prompts/<name>.md`, and `prompts/<front>.md` when the session is not a phase | whatever a live front's HANDOFF or prompt cites by path |
 | `handoff/<name>.md` | `_*.md` shared blocks and `handoff/coordinator.md` |
 | the `tmp/` of its job (`~/.claude/jobs/<id>/tmp`) | prints, videos, PDFs and archives until `--sent` |
-| its worktrees in the checkout, and their branch when merged | a worktree with uncommitted changes, an unmerged branch (reported) |
+| its worktrees (named after it, or given by `--worktree`), and their branch when merged; forced out when every commit is on a remote branch, picked onto the upstream or given by `--sha`, and only ignored files are left | a worktree with changed tracked files or unintegrated commits, an unmerged branch (reported); untracked files not ignored until `--force-worktree` |
 | the `window.md` lines that cite only it | shared `window.md` lines (reported, edit by hand) |
 | in `queue.md`, its old `<name> …` line, replaced by one `<name> <sessionId> <shas> closed <date>` line | the other `queue.md` lines that cite it (reported) |
 
 - It refuses a live session ("stop it first") and an unreadable agents list.
+- **It refuses when the checkout holds the front's files**: a path the `--sha` commits touched that the checkout's
+  `git status` lists, changed or untracked, means the front wrote in the checkout. Compare each with the commit,
+  restore those that match (a backup first when in doubt) and rerun; nothing is removed until then.
+- **It fast-forwards the checkout** to its upstream when the branch is behind and no tracked file changed in it
+  (untracked files stay; one in the way stops the merge). A changed or diverged checkout is reported, never moved.
 - **Owner files:** the front's report lists the prints and videos the owner should see. Send them with `SendUserFile`
   before the close, then rerun with `--sent`.
 - **The project's cleanup** (test databases, Redis keys, servers or containers the front started) is the

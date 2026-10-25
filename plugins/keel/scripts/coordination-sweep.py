@@ -15,12 +15,16 @@ In the session's repo: the safety refs `refs/keel/backup/<YYYY-MM-DD>-<what>` ol
 
 It prints one line only when it removed something. An internal failure stays quiet.
 
-`--close <session> --state <D> [--checkout <repo>] [--sha <sha>...] [--sent] [--dry-run]` is the coordinator's close
-of one front, at once and regardless of age: `logs/<session>/`, the assembled prompt, `prompts/<session>.md` (and the
-front's `prompts/<front>.md` when it is not a phase), `handoff/<session>.md`, the scratch of its job, its worktrees
-and branch in the checkout, and its lines in `window.md`; `queue.md` keeps one `<session> <sessionId> <shas> closed`
-line. It refuses a live session or an unreadable agents list, keeps what the open state or a live front cites, keeps
-the owner's media until `--sent`, and shows (never runs) the profile's cleanup list.
+`--close <session> --state <D> [--checkout <repo>] [--sha <sha>...] [--worktree <path>...] [--force-worktree] [--sent]
+[--dry-run]` is the coordinator's close of one front, at once and regardless of age: `logs/<session>/`, the assembled
+prompt, `prompts/<session>.md` (and the front's `prompts/<front>.md` when it is not a phase), `handoff/<session>.md`,
+the scratch of its job, its worktrees and branch in the checkout, and its lines in `window.md`; `queue.md` keeps one
+`<session> <sessionId> <shas> closed` line. It refuses a live session or an unreadable agents list, and refuses when
+the checkout's `git status` lists a file the `--sha` commits touched (the front wrote in the checkout). It keeps what
+the open state or a live front cites, keeps the owner's media until `--sent`, forces out a worktree only when its HEAD
+is on a remote branch and no tracked file changed (untracked leftovers need `--force-worktree`), fast-forwards the
+checkout's branch to its upstream when no tracked file changed in it, and shows (never runs) the profile's cleanup
+list.
 
 Usage: no argument runs the sweep; `--self-test` runs the scenarios in a temporary home.
 """
@@ -176,8 +180,8 @@ def sweep_state(root, live, now):
     return removed
 
 
-def git(cwd, *args):
-    return subprocess.run(["git", "-C", cwd] + list(args), capture_output=True, text=True, timeout=8)
+def git(cwd, *args, timeout=8):
+    return subprocess.run(["git", "-C", cwd] + list(args), capture_output=True, text=True, timeout=timeout)
 
 
 def sweep_repo(cwd, today):
@@ -340,8 +344,105 @@ def edit_queue(state, session, session_id, shas, dry_run):
     return entry, others
 
 
-def front_worktrees(checkout, session, job_dirs):
-    """(path, branch) of the checkout's worktrees that belong to the session."""
+def dirty_paths(repo, tracked_only=False):
+    """The paths `git status` lists in the repo (both sides of a rename), or None when git fails."""
+    args = ["status", "--porcelain", "-z"] + (["--untracked-files=no"] if tracked_only else [])
+    result = git(repo, *args, timeout=60)
+    if result.returncode != 0:
+        return None
+    paths, fields = [], result.stdout.split("\0")
+    i = 0
+    while i < len(fields):
+        entry = fields[i]
+        i += 1
+        if len(entry) < 4:
+            continue
+        paths.append(entry[3:])
+        if entry[0] in "RC":
+            paths.append(fields[i])
+            i += 1
+    return paths
+
+
+def commit_paths(repo, shas):
+    """The paths the commits touched, or None when one of them can't be read."""
+    paths = set()
+    for sha in shas:
+        result = git(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "--root", "-z", sha)
+        if result.returncode != 0:
+            return None
+        paths.update(p for p in result.stdout.split("\0") if p)
+    return paths
+
+
+def published(worktree, upstream=None, shas=()):
+    """True when no commit of the worktree's HEAD would be lost: each is on a remote branch, has its patch on the
+    upstream (`git cherry`, a cherry-pick onto a newer tip) or is one of the `--sha` the coordinator integrated."""
+    pending = git(worktree, "rev-list", "HEAD", "--not", "--remotes")
+    if pending.returncode != 0:
+        return False
+    left = set(pending.stdout.split())
+    if left and upstream:
+        cherry = git(worktree, "cherry", upstream, "HEAD")
+        if cherry.returncode == 0:
+            left -= {line[2:] for line in cherry.stdout.splitlines() if line.startswith("- ")}
+    return not {sha for sha in left if not any(sha.startswith(given) for given in shas if len(given) >= 7)}
+
+
+def remove_worktree(checkout, path, branch, force, upstream=None, shas=()):
+    """Removes a front's worktree; returns None, or why it was left. A detached HEAD on no remote branch stays: removing
+    it would leave its commits reachable only by the reflog."""
+    if git(path, "rev-parse", "--git-dir").returncode != 0:
+        return "unreadable"
+    if not branch and not published(path, upstream, shas):
+        return "its detached HEAD has commits on no remote branch and not given by --sha: integrate them first"
+    if git(checkout, "worktree", "remove", path, timeout=300).returncode == 0:
+        return None
+    if not published(path, upstream, shas):
+        return "its HEAD has commits on no remote branch and not given by --sha: integrate them first"
+    tracked = dirty_paths(path, tracked_only=True)
+    if tracked is None or tracked:
+        return "uncommitted changes in {} tracked file(s)".format("?" if tracked is None else len(tracked))
+    untracked = git(path, "ls-files", "--others", "--exclude-standard", "-z")
+    loose = [p for p in untracked.stdout.split("\0") if p] if untracked.returncode == 0 else None
+    if loose is None or (loose and not force):
+        shown = "?" if loose is None else ", ".join(loose[:5]) + (" and {} more".format(len(loose) - 5)
+                                                                    if len(loose) > 5 else "")
+        return "untracked files not ignored ({}); rerun with --force-worktree once they are known to be leftovers" \
+            .format(shown)
+    if git(checkout, "worktree", "remove", "--force", path, timeout=300).returncode != 0:
+        return "locked"
+    return None
+
+
+def fast_forward(checkout, dry_run):
+    """Moves the checkout's branch to its upstream when it is clean and behind; returns the report line or None."""
+    branch = git(checkout, "symbolic-ref", "--quiet", "--short", "HEAD")
+    upstream = git(checkout, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
+    if branch.returncode != 0 or upstream.returncode != 0:
+        return None
+    upstream = upstream.stdout.strip()
+    behind = git(checkout, "rev-list", "--count", "HEAD.." + upstream)
+    ahead = git(checkout, "rev-list", "--count", upstream + "..HEAD")
+    if behind.returncode != 0 or ahead.returncode != 0 or behind.stdout.strip() == "0":
+        return None
+    count = behind.stdout.strip()
+    if ahead.stdout.strip() != "0":
+        return "checkout: {} is {} behind and {} ahead of {}; not moved (diverged)".format(
+            branch.stdout.strip(), count, ahead.stdout.strip(), upstream)
+    tracked = dirty_paths(checkout, tracked_only=True)
+    if tracked is None or tracked:
+        return "checkout: {} behind {}, not moved: {} tracked file(s) changed in it".format(
+            count, upstream, "?" if tracked is None else len(tracked))
+    if dry_run:
+        return "checkout: would fast-forward {} by {} to {}".format(branch.stdout.strip(), count, upstream)
+    if git(checkout, "merge", "--ff-only", "--quiet", upstream, timeout=300).returncode != 0:
+        return "checkout: fast-forward to {} failed (an untracked file in the way?); not moved".format(upstream)
+    return "checkout: fast-forwarded {} by {} to {}".format(branch.stdout.strip(), count, upstream)
+
+
+def front_worktrees(checkout, session, job_dirs, named=()):
+    """(path, branch) of the checkout's worktrees that belong to the session, or that `--worktree` named."""
     result = git(checkout, "worktree", "list", "--porcelain")
     if result.returncode != 0:
         return []
@@ -353,7 +454,8 @@ def front_worktrees(checkout, session, job_dirs):
             branch = line[len("branch refs/heads/"):]
         elif not line and path:
             mine = os.path.basename(path.rstrip("/")) == session or branch in (session, "worktree-" + session) \
-                or any(path.startswith(job + os.sep) for job in job_dirs)
+                or any(path.startswith(job + os.sep) for job in job_dirs) \
+                or os.path.realpath(path) in named
             if mine and os.path.realpath(path) != os.path.realpath(checkout):
                 found.append((path, branch))
             path, branch = None, None
@@ -378,7 +480,11 @@ def close(argv):
     parser = argparse.ArgumentParser(prog="coordination-sweep.py --close")
     parser.add_argument("--close", required=True, metavar="SESSION")
     parser.add_argument("--state", required=True, help="the coordination state directory ($D)")
-    parser.add_argument("--checkout", help="the project checkout: its worktrees and the profile's cleanup list")
+    parser.add_argument("--checkout", help="the project checkout: its status, its worktrees, its fast-forward and the "
+                        "profile's cleanup list")
+    parser.add_argument("--worktree", nargs="+", default=[], help="the front's worktrees, when not named after it")
+    parser.add_argument("--force-worktree", action="store_true",
+                        help="discard the untracked files left in a published, committed worktree")
     parser.add_argument("--sha", nargs="+", default=[], help="the front's commits, kept as one line in queue.md")
     parser.add_argument("--sent", action="store_true", help="the owner's files were sent: remove them too")
     parser.add_argument("--dry-run", action="store_true")
@@ -396,6 +502,21 @@ def close(argv):
         return head + " the session is still live; stop it first (`claude stop <id>`), nothing removed"
     others = {a["name"] for a in agents if agent_live(a) and isinstance(a.get("name"), str) and a["name"] != session}
     session_id = mine[-1].get("sessionId") if mine else None
+
+    checkout = os.path.abspath(os.path.expanduser(args.checkout)) if args.checkout else None
+    if checkout and git(checkout, "rev-parse", "--git-dir").returncode == 0:
+        touched = commit_paths(checkout, args.sha) if args.sha else set()
+        dirty = dirty_paths(checkout)
+        if touched is None:
+            return head + " a --sha is not in the checkout; fetch it first, nothing removed"
+        if dirty is None:
+            return head + " git status of the checkout failed; nothing removed"
+        clash = sorted(set(dirty) & touched)
+        if clash:
+            shown = ", ".join(clash[:8]) + (" and {} more".format(len(clash) - 8) if len(clash) > 8 else "")
+            return (head + " the checkout has {} file(s) the front committed, changed or untracked in it: {}. The front "
+                    "wrote in the checkout; compare them with the commit, restore those that match and rerun. "
+                    "Nothing removed").format(len(clash), shown)
 
     guard = open_state(state)
     if guard is None:
@@ -429,20 +550,26 @@ def close(argv):
             removed.append("scratch {}".format(scratch))
 
     lines = []
-    if args.checkout:
-        checkout = os.path.abspath(os.path.expanduser(args.checkout))
-        for path, branch in front_worktrees(checkout, session, job_dirs):
+    if checkout:
+        named = {os.path.realpath(os.path.expanduser(w)) for w in args.worktree}
+        upstream = git(checkout, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
+        upstream = upstream.stdout.strip() if upstream.returncode == 0 else None
+        for path, branch in front_worktrees(checkout, session, job_dirs, named):
             if dry:
                 removed.append("worktree {}".format(path))
                 continue
-            if git(checkout, "worktree", "remove", path).returncode != 0:
-                lines.append("worktree left (uncommitted changes or locked): {}".format(path))
+            why = remove_worktree(checkout, path, branch, args.force_worktree, upstream, args.sha)
+            if why:
+                lines.append("worktree left ({}): {}".format(why, path))
                 continue
             removed.append("worktree {}".format(path))
             if branch and git(checkout, "branch", "-d", branch).returncode == 0:
                 removed.append("branch {}".format(branch))
             elif branch:
                 lines.append("branch {} left (not merged into HEAD)".format(branch))
+        moved = fast_forward(checkout, dry)
+        if moved:
+            lines.append(moved)
         cleanup = profile_cleanup(checkout, session)
         if cleanup:
             lines.append("run (the profile's cleanup list): " + "; ".join(cleanup))

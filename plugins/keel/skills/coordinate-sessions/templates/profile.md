@@ -6,7 +6,7 @@ settings, hooks…>, on <date>; what came from the owner is marked with the date
 
 ## Identity
 
-- Checkout: `<path>`, branch `<working branch>`, <no new branch | branch per front>, <no worktree to work in (`worktree.bgIsolation: none`) | worktree per session>.
+- Checkout: `<path>`, branch `<working branch>`, <no new branch | branch per front>, one worktree per front detached at the remote branch (`.claude/worktrees/<session>`, `worktree.bgIsolation: none`); the checkout only fast-forwards.
 - Coordination state: `~/.claude/coordination/<slug>/`. Session names: `<prefix>-<front>[-phase<n>]`.
 - How many front sessions at the same time: <1, owner's rule | N>.
 - Front contract: <PRDs, plans, ADRs — where they live>. Tasks: <ClickUp/Jira/none, and who writes>.
