@@ -18,10 +18,16 @@ settings, hooks…>, on <date>; what came from the owner is marked with the date
 <direct | split> mode (skill §6 and `references/commit-by-index.md`), with these project steps: <sync with the
 remote first? generate a file that only the tool writes?>. Message: <commitlint rule, language>.
 
-## Proof (commands of each level, skill §7)
+## Commands (data only; who runs what is the skill's §7)
 
-- Focused test: `<command>`. Suite of one project: `<command>`. Lint/typecheck: `<command>`. Pre-push hook: `<command>`.
-- P: <…>. M: <…>. C: <…>, plus the probes of the verification environment in the risk doc.
+- Focused, for a front: test of one file or spec `<command>`; lint of files `<command>`; typecheck of one project
+  `<command>`.
+- Critical front, in addition: suites of the affected projects `<command>`; risk probes `<the risk doc's list>`.
+- Integration gate, in this order, with the usual duration: `<suite: command, ~min>`, `<build>`, `<E2E>`,
+  `<measurement bench>`, `<screens>`. Pre-push hook: `<command>`.
+- Integration worktree: what a fresh worktree needs to run them `<install, generated files, how the suites get their
+  env without copying `.env*`>`.
+- Ports: `<service: port>`; what the gate starts and stops.
 
 ## What the machine and the branch have only one of
 
@@ -31,6 +37,7 @@ remote first? generate a file that only the tool writes?>. Message: <commitlint 
 | <generator: ORM client, build cache, engine project> | <…> | <…> |
 | <dependencies: install, lockfile> | rewrite everybody's environment | only with the window |
 | <the owner's servers and ports> | <…> | <…> |
+| <heavy suite, measurement bench, test database> | <one machine, results disturbed by a parallel run> | the integration gate's; a critical front only with the window |
 | <shared indexes: i18n, MEMORY.md, CLAUDE.md, risk doc, barrels> | several sessions in the same file | surgical insertion reread on the spot; commit per hunk |
 
 ## Owner approval first, always through the coordinator

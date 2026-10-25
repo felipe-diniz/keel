@@ -155,7 +155,8 @@ The session where you run it becomes the coordinator. For each large front, with
 - writes the front's prompt;
 - opens a `claude --bg` session with a lean profile;
 - hands out resources that cannot be used at the same time, such as a port, a database or a heavy build;
-- receives the report when the session ends.
+- receives the report when the session ends;
+- runs the project's full proof (suites, build, E2E, bench, screens) once, over the commits of every closed front, before the push. Each front commits with the tests of what changed only. When this gate fails, the coordinator finds the culprit commit (by the paths of the failing tests, or by bisecting the stack) and resumes that front to fix on top; the others keep going. A front that changes a critical-risk invariant still runs its own suites and the review gate before its commit.
 
 A short fix is not a front: it stays in the current session.
 

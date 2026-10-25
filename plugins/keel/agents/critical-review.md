@@ -1,6 +1,6 @@
 ---
 name: critical-review
-description: SINGLE pre-commit gate, only when the session changes a critical-risk invariant (whatever the project's CLAUDE.md declares; with no declaration, money, auth, tenant isolation, concurrency and data loss). One pass at the end, with green tests, over the critical hunks and their siblings; returns APPROVED or BLOCKED. Briefing with Request, Scope, Verified and Risk. Do NOT use without a critical domain, for design, analysis, bug investigation or exploration, nor to re-review the fix for its own findings.
+description: SINGLE pre-commit gate, only when the session changes a critical-risk invariant (whatever the project's CLAUDE.md declares; with no declaration, money, auth, tenant isolation, concurrency and data loss). One pass at the end, with the tests of what changed green, over the critical hunks and their siblings; returns APPROVED or BLOCKED. Briefing with Request, Scope, Verified and Risk. Do NOT use without a critical domain, for design, analysis, bug investigation or exploration, nor to re-review the fix for its own findings.
 model: inherit
 effort: max
 tools: Read, Grep, Glob, Bash, Skill

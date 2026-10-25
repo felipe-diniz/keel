@@ -12,7 +12,7 @@ following steps. The safety check blocks `rm` over a variable: literal paths.
 
 ```bash
 cd <checkout> && git branch --show-current && git status --short      # check: nothing foreign in your paths
-<the proof-level commands, from the profile, on the tree itself, output to a file>
+<the focused proof (critical front: plus its suites), from the profile, on the tree itself, output to a file>
 git commit -m "<type>(<scope>): <message>" -- <explicit list>     # with paths, takes only them, even with other staged
 git show --stat HEAD && git branch --show-current
 ```
@@ -47,7 +47,7 @@ carry along a commit not yet proven.
 ```bash
 git worktree add --detach <scratchpad>/proof <NEW> && ln -s <checkout>/node_modules <scratchpad>/proof/node_modules
 cd <scratchpad>/proof && export NX_DAEMON=false NX_WORKSPACE_ROOT_PATH=$PWD   # without this nx runs against the main tree
-<the proof-level commands, from the profile>
+<the focused proof (critical front: plus its suites), from the profile>
 cd <checkout> && rm <scratchpad>/proof/node_modules && git worktree remove <scratchpad>/proof   # the symlink goes first, never rm -r
 ```
 

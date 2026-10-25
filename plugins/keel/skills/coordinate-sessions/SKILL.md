@@ -17,7 +17,7 @@ The method is this file; the project comes in through three things, resolved at 
 - **Checkout and name:** `CHECKOUT=$(git rev-parse --show-toplevel)`, `SLUG=$(basename "$CHECKOUT")`.
 - **Coordination state**, outside the repo: `D=~/.claude/coordination/$SLUG/` (§3).
 - **Project profile** (`profile.md`) — the session name prefix, the branch, the table of what exists only once, the
-  commands for the proof levels, commit/push/PR, the deploy list, what is forbidden in production and where debt goes —
+  focused and integration-gate commands, commit/push/PR, the deploy list, what is forbidden in production and where debt goes —
   and the **session rules** (`session.md`), the block that goes in every prompt after the global footer (§4). Look in
   this order and use the first folder that has both (`P_DIR`):
   1. `$CHECKOUT/.claude/coordination/` — versioned, applies to the whole team (project with more than one dev);
@@ -104,7 +104,7 @@ P=${CLAUDE_SKILL_DIR}/templates/background-session.settings.json
 
 | Path | What it is | Cap | Removed by the sweep |
 |---|---|---|---|
-| `queue.md` | **only what is open**: owner decisions and approvals still valid (literal, date, scope), active front, queue, owner pending items, the last line of each closed session (shas) | ~8 KB | never |
+| `queue.md` | **only what is open**: owner decisions and approvals still valid (literal, date, scope), active front, queue, owner pending items, the line of each committed front (`<session> <sessionId> <shas>`) and the last green integration gate | ~8 KB | never |
 | `queue-archive/YYYY-MM.md` | the closed diary, moved out of `queue.md` when the delivery closes | never read whole; `grep` | after 90 days |
 | `window.md` | **only the table** of who holds each resource that exists only once, and each one's queue | ~2 KB | never |
 | `prompts/` | the front part of each session's prompt (§4); `_*.md` are shared blocks | | after 14 days; `_*.md` never |
@@ -145,7 +145,7 @@ follows [templates/front.md](templates/front.md):
 3. Numbered scope, with "decide and record the why" where there is a technical choice, and what is NOT in.
 4. The skills of the layer (only those the front touches, and only the references of the topic), the project's
    critical-risk doc and only the reference of the domain touched, and the domain's memories.
-5. The proof level (§7) and the measured gate; the close: single gate, fixes, commit (or "DO NOT COMMIT") and the report.
+5. The proof (§7): focused, or critical with its own gate; the close: fixes, commit (or "DO NOT COMMIT") and the report.
 6. The decisions already made: the owner's literal answers to the questions raised before launch (below).
 
 **Before launching, clear up every doubt.** The front runs with nobody watching: a doubt that only shows up midway
@@ -179,37 +179,38 @@ The coordinator grants and records it in `window.md`.
 
 ## 6. Commit, proof and push
 
-- **The session commits** only what is its own, after the gate, in the mode the profile declares
+- **The session commits** only what is its own, after its focused proof (§7), in the mode the profile declares
   ([references/commit-by-index.md](references/commit-by-index.md), with the holes already paid for):
   - **direct** — the front session is the only one alive and the tree has no one else's WIP on its paths: proof in the
     tree itself and `git commit -m "<msg>" -- <explicit list>` (the `--` with paths takes only those, even with
-    something else staged). It is the fastest: one round of proof, no worktree.
-  - **split** — there is another live session or someone else's WIP: temporary index + `commit-tree`, proof in a clean
-    worktree at the sha and `update-ref` with CAS over the checked parent.
+    something else staged). It is the fastest: no worktree.
+  - **split** — there is another live session or someone else's WIP: temporary index + `commit-tree`, the focused
+    proof in a clean worktree at the sha and `update-ref` with CAS over the checked parent.
   Message: the project's commit rule, one line, no body, no trailer, no co-authoring, no amend.
-- **One round of proof per level** (§7): in split mode, what already ran in the tree before the gate is not repeated in
-  the worktree, except at level C.
+- **The commits stack on the working branch** and wait for the coordinator's integration gate; the push goes only
+  after it is green ([references/integration-gate.md](references/integration-gate.md)).
 - **Safety point before a rebase or any history rewrite:** a ref, never a branch:
   `git update-ref refs/keel/backup/<YYYY-MM-DD>-<what> HEAD`. It does not show in `git branch`, and the sweep removes it
   after 14 days; delete it earlier with `git update-ref -d` once the result is checked.
-- **The push is the coordinator's, with the owner's yes**, after `git show --stat <sha>` against the report, by the path
-  the profile describes (where to push from, hook, remote). Never `--no-verify` without the owner's word. PR, CI, merge
-  and deploy: what the profile says; merge and deploy are the owner's.
-- **No critical risk touched** (maintenance, `.claude/`, docs, memory, tests, or ordinary behavior): does not go through
-  the gate.
+- **The push is the coordinator's, with the owner's yes**, of the gated sha, after `git show --stat` of each commit
+  against its report, by the path the profile describes (where to push from, hook, remote). Never `--no-verify` without
+  the owner's word. PR, CI, merge and deploy: what the profile says; merge and deploy are the owner's.
 
-## 7. Proof by risk
+## 7. Proof: focused in the front, one gate in the coordinator
 
-The coordinator puts the level in the prompt. The session raises the level when it sees it touches more, and never
-lowers it. The commands of each level are in the profile.
+| Who | When | Runs |
+|---|---|---|
+| **Front** (every one) | before its commit | the tests of what changed (the test first, the red seen), the lint/typecheck of the files, its own request × done check. Nothing else: no full suite, E2E, build, bench, measurement or screen pass unless its prompt names one |
+| **Critical front** (changes a critical-risk invariant) | before its commit | the above, the suites of the affected projects and the probes the profile asks for, then `keel:critical-review`; its commit does not wait for anyone |
+| **Coordinator: integration gate** | once, when the round's fronts have committed, before the push | the profile's integration-gate commands (suites, build, E2E, bench, screens) over the stack, in the checkout or an integration worktree ([references/integration-gate.md](references/integration-gate.md)) |
 
-| Level | When | Before the gate (in the tree) | In the commit worktree |
-|---|---|---|---|
-| **P** | text, one number, a screen tweak, a fix to one function; nothing critical | the tests of what changed and the lint of the files | the pre-push hook (or the profile's equivalent) and only the suites touched |
-| **M** | ordinary front or phase | same | the pre-push and the suites of the affected projects |
-| **C** | critical-risk domain, core with parity | the suites of the affected | the suites of the affected again (the gate may have changed the code) and the probes the profile asks for |
-
-No doubled rounds and no whole suite that the level does not ask for.
+- Nine fronts, one gate. A red gate does not hold the others: the culprit commit is found by attribution or by bisect
+  over the stack, and its front is resumed to fix on top.
+- The machine's single resources (heavy suite, measurement bench, test database, ports) belong to the gate: a front
+  never measures or runs a full suite, so nobody splits them in parallel. A critical front asks the coordinator for
+  the window before its own suites.
+- The coordinator puts in the prompt whether the front is critical. The session raises it when it sees it touches a
+  critical invariant, and never lowers it.
 
 ## 8. What the coordinator checks on its own
 
