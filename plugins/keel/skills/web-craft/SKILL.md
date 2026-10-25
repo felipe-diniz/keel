@@ -1,6 +1,6 @@
 ---
 name: web-craft
-description: Building or reviewing a public website, landing page or marketing hero — visual design that does not look generic, motion with GSAP, ScrollTrigger and Lenis, Three.js/WebGL scenes, SEO and AI search, copy, performance (Core Web Vitals) and verification on the rendered page. Use when creating or changing a public page, its hero, motion, 3D scene, metadata, structured data or marketing text, or when auditing one. A project's own design, SEO or frontend skill wins where it is more specific.
+description: Public website, landing page or hero — design that does not look generic, GSAP/ScrollTrigger/Lenis motion, Three.js scenes, SEO and AI search, copy, Core Web Vitals, verification on the rendered page. Use when creating, changing or auditing a public page, its motion, 3D scene, metadata, structured data or marketing text. A project's own design, SEO or frontend skill wins where it is more specific.
 ---
 
 # Web craft

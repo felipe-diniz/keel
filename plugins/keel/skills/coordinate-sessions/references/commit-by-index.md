@@ -1,5 +1,8 @@
 # Commit by temporary index, proof in the worktree and publishing
 
+Read when a session commits in a tree shared with other sessions (split mode), before its first commit, or before a
+push.
+
 Recipe to commit only what belongs to the session in a split tree, without touching the shared `.git/index` (checked on
 2026-10-05 in a throwaway repository: the commit takes only the session's lines, another session's staged content stays
 intact). What belongs to the project (pre-push hook, suites, remote, syncing with the remote first) is in the

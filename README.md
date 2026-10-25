@@ -17,6 +17,7 @@ Install it and start working. There is no setup step.
 
 - Wide reading goes to `keel:explore` (haiku, read-only), which returns only a synthesis with `file:line` references. Isolated writing goes to `keel:implement` (sonnet). Web research goes to `keel:research` (sonnet). The main context stays small, so each turn is cheaper and compaction comes later.
 - The lean profile used for background sessions cut the per-call base from 72k to 40k tokens. The skill listing in background sessions went from 22,662 to 4,779 characters.
+- Each rule lives in one place, and a skill keeps a short core with the detail in references read on demand. In 3.4.0 the coordinator's core went from 23,395 to 19,693 bytes, under the 20,000 characters that come back after compaction, and what every session carries stayed at about 13.8 KB with a new skill on board. Test-pinned caps keep it there ([CHANGELOG](CHANGELOG.md)).
 - The 400k compaction window cost the same as 300k in measurement and compacts less often. Each compaction loses detail.
 - The rules say what compaction must preserve: the request in the user's own words, literal approvals, files, commands with their results, and the gate state.
 
@@ -296,7 +297,7 @@ Uninstalling leaves the memory links in place, so auto memory keeps writing to `
 - Claude Code's built-in `Explore` still exists: a plugin agent gets a prefix and does not replace the built-in. The rules tell the session to use `keel:explore`.
 - The rules enter the main session's context through a hook. Subagents have their own prompt and do not receive these rules; they read the project's `CLAUDE.md`, except `explore` and `research`.
 - The `keel:direct` style overrides the user's `outputStyle` while the plugin is enabled (`force-for-plugin`). It applies to the main session; subagents have their own prompt.
-- `rules.md` must fit in 10,000 characters, the hook output limit, with room for the migration notice.
+- `rules.md` must fit in 10,000 characters, the hook output limit, with room for the migration notice. `tests/test_sizes.py` pins it, the skill cores, the footer and the references.
 - A plugin agent ignores `hooks:` in its frontmatter. That is why the gate's Bash guard is a plugin hook that filters on the payload's `agent_type`.
 - The secret guard sees only Write and Edit. A memory written through Bash is not inspected.
 - The memory link relies on symlinks. On Windows without symlink permission, `/keel:memory` falls back to `autoMemoryDirectory`; the hook does not, and only suggests the command.

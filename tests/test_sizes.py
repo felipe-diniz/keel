@@ -7,8 +7,13 @@ from conftest import PLUGIN
 
 SKILLS = PLUGIN / "skills"
 
-# bytes; a skill core is loaded whole on every invocation and must also survive compaction whole
+# bytes. rules.md is reread on every call of every session, and the SessionStart hook output that carries it (with the
+# migrate notice) is capped at 10,000 characters. A skill core is loaded whole on every invocation, and after compaction
+# only its first 20,000 characters come back. The footer goes into every front's prompt.
 CAPS = {
+    "rules.md": 9_600,
+    "skills/coordinate-sessions/SKILL.md": 20_000,
+    "skills/coordinate-sessions/templates/footer.md": 6_000,
     "skills/web-craft/SKILL.md": 6_000,
 }
 DESCRIPTION_CAP = 520
@@ -32,7 +37,7 @@ def test_skill_description_is_short(skill):
     assert len(description) <= DESCRIPTION_CAP, f"{skill}: {len(description)} chars"
 
 
-@pytest.mark.parametrize("ref", sorted(str(p.relative_to(SKILLS)) for p in SKILLS.glob("web-craft/references/*.md")))
+@pytest.mark.parametrize("ref", sorted(str(p.relative_to(SKILLS)) for p in SKILLS.glob("*/references/*.md")))
 def test_reference_says_when_to_read_it_and_is_capped(ref):
     text = (SKILLS / ref).read_text()
     assert len(text.encode()) <= REFERENCE_CAP, f"{ref}: {len(text.encode())} B"
@@ -40,7 +45,7 @@ def test_reference_says_when_to_read_it_and_is_capped(ref):
     assert first.startswith("Read when"), f"{ref}: first line is not 'Read when …'"
 
 
-@pytest.mark.parametrize("skill", ["web-craft"])
+@pytest.mark.parametrize("skill", sorted(p.parent.name for p in SKILLS.glob("*/references")))
 def test_every_reference_is_indexed_and_every_link_exists(skill):
     core = (SKILLS / skill / "SKILL.md").read_text()
     links = set(re.findall(r"\]\((references/[\w.-]+\.md)\)", core))

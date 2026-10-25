@@ -1,5 +1,8 @@
 # The context baseline of a background session
 
+Read when a session compacts too often, before trimming what a front loads at birth, or before changing the compaction
+window.
+
 Measured on 2026-10-10. Before the first line of work, a background session already carried 72k tokens, reread on every
 call. After compacting it went back up to about 113k (the baseline, the summary, the invoked skills and the recent files):
 sessions compacted every 2 to 9 minutes, and two stopped on their own with "Autocompact is thrashing". What weighed, in a

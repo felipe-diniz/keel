@@ -27,8 +27,7 @@ The method is this file; the project comes in through three things, resolved at 
      to, `.claude/settings.json`, the lockfile/`package.json`/git hooks and `.husky/` or equivalent; write it to
      `$D/profile/` following [templates/profile.md](templates/profile.md) and ask the owner only what no file answers
      (working branch, whether there is another dev on the remote, who pushes, what is forbidden in production).
-  Projects set up before the rename may still have `$CHECKOUT/.claude/coordenacao/` (`perfil.md`, `sessao.md`) and
-  `$D/perfil/`: read them when the new ones are missing.
+  Old Portuguese names: [references/legacy-names.md](references/legacy-names.md).
   **Read the whole profile before launching or resuming the first session.** What it says wins over this file.
 
 Shell state does not survive from one Bash tool call to the next: resolve `CHECKOUT`, `SLUG`, `D` and `P_DIR` once and
@@ -44,9 +43,8 @@ another project.
 | Web research | `keel:research` (subagent) | same |
 | Short fix (≲ 5 files, one domain, no PRD phase), doc, memory, coordination tweak | **directly in the coordinator**, with the gate at the end if it touches critical risk | a new session costs the context baseline, the prompt, the skills and the gate; for little work it is more expensive and slower |
 
-A subagent (Agent tool) dies with its answer, shares the context of whoever called it and has no gate of its own (the
-`keel:critical-review` is one per session): a front never goes to a subagent. Agent teams (experimental) do not isolate
-the worktree, do not resume and cost more: they do not replace `--bg` sessions in this method.
+A front never goes to a subagent: it dies with its answer, shares its caller's context and has no gate of its own.
+Agent teams (experimental) do not isolate the worktree nor resume: they do not replace `--bg` sessions.
 
 ## 2. Launch, talk, resume, stop
 
@@ -64,26 +62,8 @@ P=${CLAUDE_SKILL_DIR}/templates/background-session.settings.json
 "$C" --bg --resume <sessionId> -n <name> --settings "$P" --add-dir "$D" --permission-mode auto "<what changed and the next step>"
 ```
 
-- **`--add-dir` is variadic:** always follow it with another option, or it swallows the prompt as a directory. It grants
-  the session access to `$D` (HANDOFF and logs).
-- **The lean profile goes on every launch, `--resume` included** (`--settings "$P"`): it removes from the background
-  session what it never uses and would be reread on every call — Artifact, Workflow, ReportFindings, ScheduleWakeup,
-  NotebookEdit, AskUserQuestion, the claude.ai connectors and the built-in skills in the listing. Measured: the baseline
-  of each call dropped from 72k to 40k tokens ([references/context-baseline.md](references/context-baseline.md)).
-  The project's skills stay. Decisions go to the coordinator by `SendMessage`.
-- **Model and effort are inherited:** neither `--model` nor `--effort`, on any front, the critical-risk one included. The
-  session is born at the effort its settings give its model: the level saved with `/effort` (per model, under
-  `modelSettings`) or an `effortLevel` in the repo's settings; a top-level `effortLevel` in `~/.claude/settings.json`
-  doesn't count for Opus 5.5 or newer, which then start at `medium`. `max` is only for the gate, through the frontmatter of
-  `keel:critical-review`. Depth on a step is `ultrathink`. This rule holds by the file: an old copy of the skill in the
-  context (or preserved by compaction) once ordered `--effort max` and opened four fronts at `max` (2026-10-16); before
-  launching, check the command here.
-- **In the checkout, no worktree to work in** when the profile says so (`"worktree": {"bgIsolation": "none"}` in the
-  repo's settings). A session that asks "Call EnterWorktree first": the key is gone; take it to the owner, do not accept
-  the worktree.
-- **`NX_WORKSPACE_ROOT_PATH` inherited:** the background session is born with that of the daemon that opened it, which
-  may belong to another checkout. Every `nx` of the session and of the proof carries
-  `NX_WORKSPACE_ROOT_PATH=<checkout or worktree> NX_DAEMON=false`.
+- **The details** (variadic `--add-dir`, the lean profile, inherited model and effort, no worktree, `NX_*`, resume
+  copies): [references/launch.md](references/launch.md). Never `--model` or `--effort` on a front.
 - **Name:** `<profile prefix>-<front>[-phase<n>]`, the same in the prompt, in `window.md` and in the report.
 - **Talking:** `SendMessage` to the NAME; `ListAgents` shows the names, the coordinator's included (it changes with each
   session: check before building a prompt and warn the active ones if it changes). A message to an idle session wakes it
@@ -98,8 +78,6 @@ P=${CLAUDE_SKILL_DIR}/templates/background-session.settings.json
 - **New front, new session:** never send a second front to a session that already closed its own, nor reopen it by
   `--resume` for another front: it would reread the whole context of the previous one on every call. `--resume` is only
   to continue the SAME front.
-- **Resuming** continues the same conversation; if it is still running, it opens a copy and warns. Before opening or
-  resuming, check in `agents --json` that the owner has not already opened the same front.
 
 ## 3. The coordination state (`$D`)
 
@@ -113,32 +91,12 @@ P=${CLAUDE_SKILL_DIR}/templates/background-session.settings.json
 | `handoff/<session>.md` | the HANDOFF the session maintains, for whoever resumes | | after 14 days |
 | `handoff/coordinator.md` | the coordinator checkpoint (§9): decisions in progress, next step, live sessions with name and id | ~2 KB | never |
 
-- If the state directory still has the old Portuguese names (`fila.md`, `fila-arquivo/`, `janela.md`,
-  `handoff/coordenadora.md`), rename them with `mv` to `queue.md`, `queue-archive/`, `window.md` and
-  `handoff/coordinator.md` before continuing, and tell the owner in one line.
-
-**Close each front at once.** When a front is stopped and its commit checked (or, in a stacked round, when the gate
-is green), the coordinator runs:
-
-```bash
-python3 ${CLAUDE_SKILL_DIR}/../../scripts/coordination-sweep.py --close <name> --state "$D" --checkout "$CHECKOUT" --sha <shas> --dry-run
-```
-
-and then the same line without `--dry-run`. It removes `logs/<name>/`, the assembled prompt, `prompts/<name>.md`,
-`handoff/<name>.md`, the scratch of its job, its worktree and branch, and its lines in `window.md`; `queue.md` keeps
-one `<name> <sessionId> <shas> closed <date>` line, which the gate and the next coordinator read. It refuses a live
-session, keeps what the open state or a live front cites, and keeps prints, videos and PDFs until `--sent`: send the
-ones the owner still needs with `SendUserFile` first. The project's own cleanup (test databases, queues, servers the
-front started) is the profile's list, which the close prints for the coordinator to run. Then move the front's diary
-lines of `queue.md` to `queue-archive/`.
-
-**The sweep is the net:** at every session start the plugin's sweep hook removes, in every project's `$D`, what the
-table marks, counted from the entry's last change. What stays at any age: what belongs to a session alive in
-`agents --json` (when the list can't be read, age alone decides), and what `queue.md`, `window.md` or
-`handoff/coordinator.md` cite by path (`logs/<name>`, `prompts/<name>`, `handoff/<name>`). So a tool, evidence or
-generator that an open item still needs is cited by that path in `queue.md`; once the item closes and leaves it, the
-file expires. Nobody deletes state by hand. The hook also removes the safety refs older than 14 days (§6) and prunes the
-worktrees whose directory has been gone for 14 days.
+**Close each front at once** when it is stopped and its commit checked (in a stacked round, after the green gate):
+`coordination-sweep.py --close <name> --dry-run`, then without it. It removes the front's logs, prompt, HANDOFF, job
+scratch, worktree and `window.md` lines, leaves one `<name> <sessionId> <shas> closed` line in `queue.md`, keeps prints
+and videos until they are sent with `SendUserFile`, and prints the profile's cleanup list to run. The sweep hook at every
+session start removes by age what the table marks, as the net. Command and rules:
+[references/cleanup.md](references/cleanup.md). Nobody deletes state by hand.
 
 The next coordinator reads `queue.md` and `window.md` — that is why they have a cap. When closing a delivery: its diary
 goes to `queue-archive/`, `queue.md` keeps what is open, and the line of a returned resource leaves `window.md`.
@@ -249,12 +207,9 @@ messages between sessions and state files with no cap.
   `window.md` (§3) and `handoff/coordinator.md`, and warns the owner in one line: "state saved; you can `/clear` and
   resume with `/keel:coordinate-sessions`". The `/clear` is the owner's command: it does not wait for it to proceed. The
   front session does not need this: it is born clean and exits with the `stop` (§2).
-- **Checkpoint earlier, without waiting for the round:** the cost of every call and of every cache miss grows with the
-  coordinator's context, so it does not wait for the round to close when the context is already heavy. After an
-  automatic compaction, or once three fronts have closed since the last `/clear`, it saves the checkpoint at the next
-  quiet point (no question open with the owner, no gate or commit being checked) and gives the same one-line notice,
-  even with fronts still live. The resume renews each live session's `notify_when_idle` (next bullet), so nothing is
-  lost.
+- **Checkpoint earlier, without waiting for the round:** after an automatic compaction, or once three fronts have
+  closed since the last `/clear`, save the checkpoint at the next quiet point (no question open with the owner, no gate
+  or commit being checked) and give the same notice, even with fronts live: every call costs more as the context grows.
 - **The tick: warm cache, self-off, resume after the usage limit.** With the first front live, the coordinator arms one
   recurring cron every 30 minutes that runs `scripts/coordination-tick.py` and acts on its one line: `stop` (no live
   front) deletes the cron; `wake <name>` is a message to a live front the limit had blocked; `resumed <name>` was
@@ -264,19 +219,8 @@ messages between sessions and state files with no cap.
   `handoff/coordinator.md`, not the previous conversation; check the live sessions in `agents --json` and renew the
   `notify_when_idle` of each (the notice requested before the `/clear` may not arrive), arm the tick
   (above) when one is live; if the coordinator's name changed, warn the active ones.
-- **Autonomous run (nobody supervising for hours): relay instead of `/clear`.** The coordinator runs as a background
-  session, `<prefix>-coord-<n>`, opened with the same command as the fronts (§2) and the prompt "run the
-  keel:coordinate-sessions skill and resume coordination; autonomous run, relay on". In the terminal it could not stop
-  itself, and pending notices would wake it. At the end-of-round checkpoint, in place of the `/clear` notice:
-  1. it writes the checkpoint (§3);
-  2. it opens the successor `<prefix>-coord-<n+1>` with the same command and the same prompt;
-  3. it checks in `agents --json` that it is alive;
-  4. it ends itself with `"$C" stop <its own id, found by name in the same JSON>` and does nothing more.
-  The successor follows "Resuming after the `/clear`" and sends the new name to each live session, with
-  `notify_when_idle`. Measured on 2026-10-20: the successor is born and takes over, the old one leaves the list, and the
-  front answers the new one by name. In the autonomous run nobody answers questions: the doubts of all the foreseen
-  fronts are cleared before releasing the run (§4); what comes up afterwards goes to the owner's pending items in
-  `queue.md`, and the coordinator moves on to another front.
+- **Autonomous run (nobody supervising for hours): relay instead of `/clear`**, with the coordinator itself as a
+  background session: [references/relay.md](references/relay.md).
 - **Messages only for resource, decision and report.** Progress goes to the HANDOFF; the coordinator reads it when it
   needs to.
 - **Long output to a file** (`$D/logs/<session>/`), only the summary in the context (`tail -n 5`, the grep of the count
@@ -284,5 +228,14 @@ messages between sessions and state files with no cap.
 - **A skill comes in through its core** and only through the references of the topic; after compaction, only the first
   20k characters of each invoked skill come back, up to about 100k in total, and the one the next step
   asks for is reinvoked.
-- **Reading goes to `keel:explore`, writing the isolable and non-critical to `keel:implement`;** critical risk and
-  running the suites stay in the session.
+
+## References (read when…)
+
+- [launch](references/launch.md): opening or resuming a front, or a session born wrong.
+- [cleanup](references/cleanup.md): a front closes, or the state grows.
+- [commit-by-index](references/commit-by-index.md): committing in a shared tree, or pushing.
+- [integration-gate](references/integration-gate.md): the round's fronts committed, the gate failed, or before a push.
+- [tick](references/tick.md): arming or deleting the cron, or a front stopped at the limit.
+- [relay](references/relay.md): an autonomous run, or taking over a relay.
+- [context-baseline](references/context-baseline.md): a session compacts too often, or trimming what it loads.
+- [legacy-names](references/legacy-names.md): a profile or state file under a Portuguese name.
