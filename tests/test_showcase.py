@@ -112,20 +112,21 @@ def write(path, data):
 
 
 PORTRAIT = {
-    "theme": "dark", "fps": 30, "cover": {"scene": "gancho", "at": 0.8},
+    "theme": "dark", "fps": 30, "cover": {"scene": "gancho", "at": 1.6},
     "scenes": [
-        {"id": "gancho", "duration": 1.2,
-         "caption": {"text": "Your week in one screen", "accent": ["one", "screen"], "sub": "Demo data"},
+        {"id": "gancho", "duration": 2.2,
+         "caption": {"text": "Your whole week of appointments in one screen", "accent": ["one", "screen"],
+                     "sub": "Demo data"},
          "narration": {"text": "Your week in one screen."},
          "shots": [{"shot": "inicio", "at": 0}], "taps": [{"at": 0.7, "point": "tap"}],
          "camera": [{"at": 0, "s": 1}, {"at": 1.0, "s": 1.25, "focus": {"point": "title"}}]},
-        {"id": "rola", "duration": 1.0, "caption": {"text": "Scroll to any day"},
+        {"id": "rola", "duration": 1.3, "caption": {"text": "Scroll to any day"},
          "narration": {"text": "Scroll to any day, 7 days ahead."},
          "shots": [{"shot": "lista", "at": 0, "in": "push", "scroll": [0, {"point": "item", "top": 80}],
                     "scrollAt": [0.1, 0.9]}]},
         {"id": "detalhe", "duration": 0.8, "narration": {"text": "Open the detail."},
          "shots": [{"shot": "detalhe", "at": 0, "in": "rise"}]},
-        {"id": "fecho", "device": False, "duration": 1.0, "narration": {"text": "Try Demo free for 7 days."},
+        {"id": "fecho", "device": False, "duration": 1.6, "narration": {"text": "Try Demo free for 7 days."},
          "cta": {"title": "Try <em>Demo</em>", "lines": ["Free for 7 days"], "pill": "demo.example",
                  "footer": "demo.example"}},
     ],
@@ -135,15 +136,15 @@ PORTRAIT = {
 
 LANDSCAPE = {
     "format": "landscape", "theme": "dark", "fps": 30, "output": "novidades-demo.mp4",
-    "poster": {"scene": "abertura", "at": 0.5},
+    "poster": {"scene": "abertura", "at": 1.4},
     "voice": {"voice_id": "stub-voice", "name": "Stub", "model_id": "eleven_v4", "language_code": "en",
               "settings": {"speed": 1.0}, "pronounce": {"7": "seven"}},
     "music": {"model_id": "music_v2_5", "prompt": "calm instrumental"},
     "audio": {"leadIn": 0.15, "sceneLead": 0.18, "tail": 0.6},
     "scenes": [
-        {"id": "abertura", "device": False, "duration": 1.0, "narration": {"text": "What is new in Demo."},
+        {"id": "abertura", "device": False, "duration": 1.6, "narration": {"text": "What is new in Demo."},
          "cta": {"title": "What is new in <em>Demo</em>", "lines": ["October"], "footer": "demo.example"}},
-        {"id": "painel", "duration": 1.0, "narration": {"text": "The panel shows 7 days at once."},
+        {"id": "painel", "duration": 1.2, "narration": {"text": "The panel shows 7 days at once."},
          "caption": {"text": "Seven days at once"},
          "shots": [{"shot": "painel", "at": 0, "in": "fade", "url": "/home"}],
          "taps": [{"at": 0.5, "point": "tap"}], "camera": [{"at": 0, "s": 1}, {"at": 0.9, "s": 1.1, "fx": 640}]},
@@ -168,6 +169,21 @@ def test_validate_reports_every_broken_field(tmp_path):
     for needle in ("format", "scenes[0].id", "scenes[0].duration", "scenes[0].shots[0].shot",
                    "scenes[0].shots[0].in", "scenes[1].taps[0]", "cover.scene"):
         assert needle in r.stderr, needle
+
+
+@pytest.mark.parametrize("key,scene,at", [("cover", "gancho", 0.8), ("cover", "gancho", 2.1), ("poster", "fecho", 0.5)])
+def test_validate_refuses_a_still_while_the_text_still_moves(key, scene, at, tmp_path):
+    """Kinetic caption of 8 words with a sub settles at 1.25 s and leaves at duration - 0.3; a 5-part CTA at 1.33 s."""
+    board = json.loads(json.dumps(PORTRAIT))
+    board.pop("cover")
+    board[key] = {"scene": scene, "at": at}
+    if key == "poster":
+        board["format"] = "landscape"
+        board.pop("carousel")
+    sb = write(tmp_path / "sb.json", board)
+    r = node("compose.mjs", "--validate", "--storyboard", sb, cwd=tmp_path)
+    assert r.returncode == 1, r.stdout
+    assert f"{key}.at" in r.stderr and ("settles" in r.stderr or "leaving" in r.stderr)
 
 
 def test_validate_checks_shot_and_point_names_against_captured_scenes(tmp_path):
@@ -319,7 +335,7 @@ def test_portrait_reel_and_stills(portrait):
     info = ffprobe(portrait / "reel.mp4")
     v = video_stream(info)
     assert (v["width"], v["height"], v["r_frame_rate"], v["pix_fmt"]) == (1080, 1920, "30/1", "yuv420p")
-    assert abs(float(info["format"]["duration"]) - 4.0) < 0.1
+    assert abs(float(info["format"]["duration"]) - 5.9) < 0.1
     assert not has_audio(info), "no narration and no music: the reel is silent"
     for still, size in (("capa-1080x1920.png", (1080, 1920)), ("capa-1080x1350.png", (1080, 1350)),
                         ("carrossel-01.png", (1080, 1350))):
@@ -329,11 +345,66 @@ def test_portrait_reel_and_stills(portrait):
     assert frames == ["01-gancho.png", "02-rola.png", "03-detalhe.png", "04-fecho.png"]
 
 
+PROBE = """
+import { loadChromium } from %(lib)s;
+const [page_, height] = [process.argv[2], Number(process.argv[3])];
+const chromium = await loadChromium(process.cwd());
+const browser = await chromium.launch({ args: ['--allow-file-access-from-files'] });
+const page = await browser.newPage({ viewport: { width: 1080, height }, deviceScaleFactor: 1 });
+await page.goto(page_);
+await page.evaluate(() => window.ready);
+const out = await page.evaluate((h) => {
+  window.setLayout(h);
+  const L = window.LAYOUT();
+  return window.SCENES.filter((s) => s.caption).map((s) => {
+    window.renderAt(s.start + s.settle + 0.02);
+    const words = document.getElementById('words');
+    const box = (r) => ({ left: r.left, right: r.right, top: r.top, bottom: r.bottom });
+    const marks = [...words.querySelectorAll('.w.acc')].map((w) => {
+      const range = document.createRange();
+      range.selectNodeContents(w.firstChild);
+      return { word: w.firstChild.nodeValue, text: box(range.getBoundingClientRect()), hl: box(w.querySelector('.hl').getBoundingClientRect()) };
+    });
+    const each = [...words.children].map((w) => { const r = document.createRange(); r.selectNodeContents(w.firstChild); return box(r.getBoundingClientRect()); });
+    return { id: s.id, settle: s.settle, duration: s.duration, layout: L, words: each, marks };
+  });
+}, height);
+console.log(JSON.stringify(out));
+await browser.close();
+"""
+
+
+@pytest.mark.parametrize("height", [1920, 1350])
+def test_kinetic_caption_settled_highlight_covers_the_word_and_title_stays_in_the_safe_area(portrait, height, tmp_path):
+    probe = tmp_path / "probe.mjs"
+    probe.write_text(PROBE % {"lib": json.dumps((SCRIPTS / "lib" / "playwright.mjs").as_uri())})
+    r = subprocess.run(["node", str(probe), (portrait / ".composer" / "index.html").as_uri(), str(height)],
+                       capture_output=True, text=True, cwd=tmp_path)
+    assert r.returncode == 0, r.stderr
+    scenes = json.loads(r.stdout)
+    assert [s["id"] for s in scenes] == ["gancho", "rola"]
+    for s in scenes:
+        L = s["layout"]
+        assert s["settle"] + 0.02 < s["duration"] - 0.3, f"{s['id']}: the text must settle before it leaves"
+        left, right = L["side"], 1080 - L["side"]
+        top, bottom = L.get("safe", [0, height])
+        for w in s["words"]:
+            assert left - 0.5 <= w["left"] and w["right"] <= right + 0.5, (s["id"], height, w, L["side"])
+            assert top <= w["top"] and w["bottom"] <= bottom, (s["id"], height, w)
+        for m in s["marks"]:
+            t, hl = m["text"], m["hl"]
+            assert hl["left"] <= t["left"] + 0.5 and t["right"] <= hl["right"] + 0.5, (s["id"], height, m)
+            middle = (t["top"] + t["bottom"]) / 2
+            assert hl["top"] <= middle - 0.3 * (t["bottom"] - t["top"]) and hl["bottom"] >= middle + 0.3 * (t["bottom"] - t["top"]), m
+            assert hl["left"] >= left - 0.5 and hl["right"] <= right + 0.5, (s["id"], height, m)
+    assert {m["word"] for s in scenes for m in s["marks"]} == {"one", "screen"}
+
+
 def test_landscape_video_mixes_music_without_narration(landscape):
     info = ffprobe(landscape / "novidades-demo.mp4")
     v = video_stream(info)
     assert (v["width"], v["height"], v["r_frame_rate"], v["pix_fmt"]) == (1920, 1080, "30/1", "yuv420p")
-    assert abs(float(info["format"]["duration"]) - 2.0) < 0.15
+    assert abs(float(info["format"]["duration"]) - 2.8) < 0.15
     audio = next(s for s in info["streams"] if s["codec_type"] == "audio")
     assert audio["codec_name"] == "aac" and audio["sample_rate"] == "48000"
     assert ffprobe(landscape / "poster.jpg")["streams"][0]["width"] == 1920

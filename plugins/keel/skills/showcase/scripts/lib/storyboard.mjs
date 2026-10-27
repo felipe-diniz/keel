@@ -7,6 +7,40 @@ const TRANSITIONS = ['push', 'rise', 'fade', 'cut'];
 const EASES = ['inOut', 'out', 'back', 'linear'];
 const AUDIO_KEYS = ['leadIn', 'sceneLead', 'tail', 'lufs', 'truePeak', 'voiceLufs', 'musicGapDb', 'duckThreshold', 'duckRatio', 'duckRelease', 'fadeIn', 'fadeOut'];
 
+/**
+ * When the text of a scene stops moving, from the same timings `compose.mjs` draws with: each kinetic word enters
+ * 0.075 s after the previous and takes 0.45 s; an accent's highlight grows from 0.25 s after its word, for 0.35 s; the
+ * sub enters 0.15 s after the last word, for 0.4 s; each CTA part enters 0.12 s after the previous, for 0.5 s (the
+ * brand mark counts as a part). A kinetic caption starts leaving 0.3 s before the scene ends. A cover, a poster or a
+ * scene frame taken outside [settle, leave] catches the text mid-animation.
+ */
+export const MOTION = { wordStep: 0.075, wordIn: 0.45, hlLead: 0.25, hlIn: 0.35, subLead: 0.15, subIn: 0.4, captionOut: 0.3, ctaStep: 0.12, ctaIn: 0.5 };
+
+export function settleOf(scene, { brand = true } = {}) {
+  const M = MOTION;
+  let t = 0;
+  const c = scene.caption;
+  if (c?.text) {
+    const words = c.text.split(' ');
+    const delay = c.delay ?? 0.1;
+    t = Math.max(t, delay + (words.length - 1) * M.wordStep + M.wordIn);
+    const accent = new Set((c.accent ?? []).flatMap((a) => a.split(' ')));
+    words.forEach((w, i) => {
+      if (accent.has(w)) t = Math.max(t, delay + i * M.wordStep + M.hlLead + M.hlIn);
+    });
+    if (c.sub) t = Math.max(t, delay + words.length * M.wordStep + M.subLead + M.subIn);
+  }
+  if (scene.cta) {
+    const parts = (brand ? 1 : 0) + 1 + (scene.cta.lines?.length ?? 0) + (scene.cta.pill ? 1 : 0) + (scene.cta.footer ? 1 : 0);
+    t = Math.max(t, (scene.cta.delay ?? 0.35) + (parts - 1) * M.ctaStep + M.ctaIn);
+  }
+  return t;
+}
+
+export function leaveOf(scene) {
+  return scene.caption && !scene.cta ? scene.duration - MOTION.captionOut : scene.duration;
+}
+
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const isStr = (v) => typeof v === 'string' && v.length > 0;
 const isObj = (v) => v != null && typeof v === 'object' && !Array.isArray(v);
@@ -142,7 +176,15 @@ export function validateStoryboard(board, cenas = null) {
     const still = board[key];
     if (still == null) continue;
     if (!isObj(still) || !isStr(still.scene) || !ids.has(still.scene)) bad(`${key}.scene`, 'must be the id of a scene');
-    if (still && !isNum(still.at)) bad(`${key}.at`, 'must be seconds inside that scene');
+    else if (!isNum(still.at)) bad(`${key}.at`, 'must be seconds inside that scene');
+    else {
+      const scene = board.scenes.find((s) => s?.id === still.scene);
+      if (!isNum(scene.duration)) continue;
+      const settle = settleOf(scene);
+      const leave = leaveOf(scene);
+      if (still.at < settle) bad(`${key}.at`, `${still.at} s is before the text of "${scene.id}" settles (${settle.toFixed(2)} s): the still would catch it mid-animation`);
+      else if (still.at > leave) bad(`${key}.at`, `${still.at} s is past ${leave.toFixed(2)} s, when the caption of "${scene.id}" starts leaving`);
+    }
   }
   if (board.carousel != null) {
     if (!Array.isArray(board.carousel)) bad('carousel', 'must be an array');

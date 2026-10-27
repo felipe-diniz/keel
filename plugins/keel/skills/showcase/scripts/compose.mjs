@@ -36,7 +36,7 @@ import { brandFiles, escapeHtml, loadConfig, paletteOf, parseArgs, rel } from '.
 import { fontFaces } from './lib/art-html.mjs';
 import { loadChromium } from './lib/playwright.mjs';
 import { measure, run } from './lib/run.mjs';
-import { validateStoryboard } from './lib/storyboard.mjs';
+import { leaveOf, settleOf, validateStoryboard } from './lib/storyboard.mjs';
 
 const { flags } = parseArgs();
 if (typeof flags.storyboard !== 'string') {
@@ -150,6 +150,17 @@ const assets = {
   base: fileUrl(SCENES_DIR) + '/',
   product: escapeHtml(loaded.config.product ?? ''),
 };
+/**
+ * When each scene's text stops moving and when it starts leaving: the scene frame, the covers and the poster are taken
+ * inside that window. With narration the spoken words set it: the last word lands 0.11 s after it starts, a CTA line
+ * 0.5 s after its word, and the spoken caption leaves 0.25 s before the scene ends.
+ */
+const hasBrand = Boolean(assets.logo || assets.product);
+for (const scene of storyboard.scenes) {
+  const last = scene.spoken?.words.at(-1);
+  scene.settle = last ? Math.max(last.start + 0.11, scene.cta ? last.end + 0.5 : 0) : settleOf(scene, { brand: hasBrand });
+  scene.leave = last && !scene.cta ? scene.duration - 0.25 : leaveOf(scene);
+}
 
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>
 ${assets.faces}
@@ -179,8 +190,8 @@ html,body{background:${palette.bg};overflow:hidden}
 #tap .dot{position:absolute;inset:8px;border-radius:50%;background:#ffffffb0;box-shadow:0 0 0 2px #ffffff55}
 #tap .ring{position:absolute;inset:0;border-radius:50%;border:3px solid #fff}
 #scrim{position:absolute;left:0;right:0;top:0;display:none;z-index:9;pointer-events:none;background:linear-gradient(to bottom,${palette.bg} 0%,${palette.bg} calc(100% - 110px),${palette.bg}00 100%)}
-#caption{position:absolute;left:60px;right:60px;top:var(--capTop);display:flex;flex-direction:column;align-items:center;text-align:center;gap:22px;z-index:10}
-#words{display:flex;flex-wrap:wrap;justify-content:center;column-gap:.26em;row-gap:.06em;font:800 var(--capSize)/1.04 'SCDisplay',sans-serif;letter-spacing:-.025em;text-shadow:0 6px 30px #000a}
+#caption{position:absolute;left:var(--side);right:var(--side);top:var(--capTop);display:flex;flex-direction:column;align-items:center;text-align:center;gap:22px;z-index:10}
+#words{display:flex;flex-wrap:wrap;justify-content:center;max-width:100%;padding:0 .16em;column-gap:.26em;row-gap:.06em;font:800 var(--capSize)/1.04 'SCDisplay',sans-serif;letter-spacing:-.025em;text-shadow:0 6px 30px #000a}
 .w{display:inline-block;position:relative;will-change:transform}
 .w .hl{position:absolute;left:-.12em;right:-.12em;top:.06em;bottom:.02em;background:${palette.accent};border-radius:10px;transform-origin:0 50%;z-index:-1}
 .w.acc{color:${palette.onAccent};text-shadow:none}
@@ -238,10 +249,10 @@ function centered(layout) {
   return { ...layout, spokenTop: top, cy: top + layout.capBox + layout.capGap + phoneH / 2 };
 }
 const LAYOUTS = {
-  1920: centered({ sw: 510, bezel: 12, cx: 540, safe: [150, 1600], capBox: 200, capGap: 28, capTop: 150, capSize: 84, subSize: 34, ctaTop: 230, ctaSize: 108, ctaLine: 38, logoH: 54, spokenSize: 66 }),
-  1350: { sw: 430, bezel: 11, cx: 540, cy: 860, capTop: 70, capSize: 64, subSize: 28, ctaTop: 150, ctaSize: 84, ctaLine: 32, logoH: 44, spokenTop: 90, spokenSize: 54 },
+  1920: centered({ sw: 510, bezel: 12, cx: 540, safe: [150, 1600], side: 90, capMax: 380, capBox: 200, capGap: 28, capTop: 170, capSize: 84, subSize: 34, ctaTop: 230, ctaSize: 108, ctaLine: 38, logoH: 54, spokenSize: 66 }),
+  1350: { sw: 430, bezel: 11, cx: 540, cy: 860, side: 80, capMax: 300, capTop: 70, capSize: 64, subSize: 28, ctaTop: 150, ctaSize: 84, ctaLine: 32, logoH: 44, spokenTop: 90, spokenSize: 54 },
   /** Landscape: the browser window centred, 40 px of air above and below; the CTA takes the middle of the frame. */
-  1080: { sw: 1680, bezel: 0, cx: 960, cy: 540, capTop: 60, capSize: 64, subSize: 28, ctaTop: 300, ctaSize: 92, ctaLine: 34, logoH: 56, spokenTop: 60, spokenSize: 48 },
+  1080: { sw: 1680, bezel: 0, cx: 960, cy: 540, side: 160, capMax: 220, capTop: 60, capSize: 64, subSize: 28, ctaTop: 300, ctaSize: 92, ctaLine: 34, logoH: 56, spokenTop: 60, spokenSize: 48 },
 };
 let L = LAYOUTS[1920];
 const $ = (id) => document.getElementById(id);
@@ -333,9 +344,11 @@ function cameraAt(scene, u) {
 // ── drawing ─────────────────────────────────────────────────────────────────────
 function setLayout(height) {
   L = LAYOUTS[height];
+  /** The caption and the CTA are rebuilt and remeasured for the new size: a font shrunk for 1920 is wrong for 1350. */
+  captionKey = null; $('cta').dataset.key = '';
   const st = $('stage').style;
   st.setProperty('--h', height + 'px'); st.setProperty('--sw', L.sw + 'px'); st.setProperty('--s', L.sw / VW); st.setProperty('--bezel', L.bezel + 'px');
-  for (const k of ['capTop', 'capSize', 'subSize', 'ctaTop', 'ctaSize', 'ctaLine', 'logoH', 'spokenSize']) st.setProperty('--' + k, L[k] + 'px');
+  for (const k of ['side', 'capTop', 'capSize', 'subSize', 'ctaTop', 'ctaSize', 'ctaLine', 'logoH', 'spokenSize']) st.setProperty('--' + k, L[k] + 'px');
   document.body.style.width = STAGE_W + 'px'; document.body.style.height = height + 'px';
 }
 function drawPhone(cam) {
@@ -450,6 +463,12 @@ function drawCaption(scene, u) {
     }
     sub.textContent = cap.sub ?? '';
     words.style.fontSize = cap.size ? cap.size + 'px' : '';
+    /**
+     * The title stays inside the layout's side margins and its height budget: it wraps first (flex-wrap), and a word
+     * that alone passes the width, or a title taller than capMax, shrinks the font. Measured with the transforms of the
+     * animation off the layout, so the size is the settled one.
+     */
+    for (let size = cap.size ?? L.capSize; size > 36 && (words.scrollWidth > words.clientWidth + 1 || $('caption').offsetHeight > L.capMax); size -= 2) words.style.fontSize = size - 2 + 'px';
   }
   $('scrim').style.height = '';
   /** The scrim behind the caption: the zoomed phone passes under it instead of crossing the text. */
@@ -547,7 +566,8 @@ window.renderSlide = (index) => {
 };
 window.setLayout = setLayout;
 window.TOTAL = TOTAL;
-window.SCENES = SB.scenes.map((s) => ({ id: s.id, start: s.start, duration: s.duration, frameAt: s.frameAt }));
+window.SCENES = SB.scenes.map((s) => ({ id: s.id, start: s.start, duration: s.duration, frameAt: s.frameAt, settle: s.settle, leave: s.leave, caption: Boolean(s.caption && !s.spoken && !s.cta), cta: Boolean(s.cta) }));
+window.LAYOUT = () => ({ ...L });
 setLayout(${DEVICE.H});
 window.ready = Promise.all([...preload, document.fonts.ready]).then(() => true);
 </script></body></html>`;
@@ -621,7 +641,11 @@ try {
 
   if (ONLY !== 'audio') {
     for (const [i, scene] of scenes.entries()) {
-      await render(scene.start + (scene.frameAt ?? Math.max(0.1, scene.duration - 0.45)));
+      /** The default frame: 0.45 s before the end, moved inside [settle, leave] so the text is still. */
+      const at = scene.frameAt ?? Math.max(0.1, Math.min(scene.leave - 0.02, Math.max(scene.settle + 0.02, scene.duration - 0.45)));
+      if (scene.settle > scene.leave) console.warn(`warning: the text of "${scene.id}" settles at ${scene.settle.toFixed(2)} s but leaves at ${scene.leave.toFixed(2)} s: lengthen the scene or shorten its text`);
+      else if (at < scene.settle || at > scene.leave) console.warn(`warning: frameAt ${at} of "${scene.id}" is outside [${scene.settle.toFixed(2)}, ${scene.leave.toFixed(2)}] s: the frame catches the text moving`);
+      await render(scene.start + at);
       await page.screenshot({ path: join(OUT, 'frames', `${String(i + 1).padStart(2, '0')}-${scene.id}.png`) });
     }
     console.log(`${scenes.length} scene frames in ${rel(join(OUT, 'frames'))}`);

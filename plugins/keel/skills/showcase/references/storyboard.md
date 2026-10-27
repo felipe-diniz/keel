@@ -121,6 +121,8 @@ In landscape the window takes the captured viewport (1440x810 at dsf 1.25 fills 
 ## Timing
 
 - Without narration the durations are the cut. A kinetic caption needs about 0.45 s plus 0.075 s per word to land, and the last 0.3 s of a scene fades it out: a scene shorter than its caption cuts it mid-air.
+- Stills sit where the text is still. A scene's text settles at `delay + (words - 1) * 0.075 + 0.45` (an accent's highlight 0.6 s after its word starts, the sub 0.55 s after the last word; a CTA part every 0.12 s plus 0.5 s, the brand mark included) and a kinetic caption leaves from `duration - 0.3`. `--validate` refuses a `cover.at` or `poster.at` outside that window; the scene frames default inside it, and the render warns when a scene is too short for its text.
+- The title wraps inside the side margins (90 px in the Reel, 80 in the feed, 160 in landscape) and shrinks when one word alone passes the width or the title passes its height budget.
 - Read time: 2.5 to 4 s per scene for a Reel, 5 to 9 s for a release video scene with a tap and a zoom. A Reel of 15 to 30 s; a release video of 60 to 90 s.
 - Taps land after the screen settles (at + dur), and the camera reaches the focus before the tap, not with it.
 - The first scene carries the hook: the claim of the piece in the first 1.5 s, with the screen already visible.
