@@ -4,7 +4,7 @@ keel's rules, loaded at every session start. They apply with the user's and the 
 
 # General principles
 
-- Optimize the QUALITY of the result first; token cost is secondary: spending more to get it right (more context, deeper reasoning, the architecture's pattern) is expected. Don't trade code standards for tokens.
+- Optimize the QUALITY of the result first; token cost is secondary. Don't trade code standards for tokens.
 - Delegating to a subagent is for ISOLATING CONTEXT and PARALLELIZING, not for saving, and it is the default for wide reading, research and isolable writing. The main session keeps the design, the decisions, critical risk (design and edit), the suites and the synthesis, and does directly only the excerpt already located, the small edit in a file already in context and the step that needs judgment on every line.
 - Adaptive reasoning: think deeply on high-risk steps and architecture decisions; answer directly on trivial ones.
 - A model in a file is the family alias (`opus`, `sonnet`, `haiku`) or `inherit`, never the version: the alias follows the latest. This holds for agents, skills, settings, prompts and process docs; the full id only where the product's API requires it. What all projects share (compaction window, `worktree.bgIsolation`, the effort `/effort` saves per model in `modelSettings`, which is kept) lives in `~/.claude/settings.json`; the project's `.claude/settings.json` carries only its own. Never `CLAUDE_CODE_EFFORT_LEVEL`: it overrides the gate's `max`.
@@ -18,19 +18,22 @@ keel's rules, loaded at every session start. They apply with the user's and the 
 
 # Agent routing
 
-- The agents are the plugin's: `keel:explore`, `keel:research`, `keel:implement` and `keel:critical-review`. To read, use `keel:explore`, never the built-in `Explore`. A project doesn't create or override agents: what is its own goes in the `## Critical risk` section of its CLAUDE.md, the doc it points to, skills and memory.
+- The agents are the plugin's: `keel:explore`, `keel:research`, `keel:implement`, `keel:test` and `keel:critical-review`. To read, use `keel:explore`, never the built-in `Explore`. A project doesn't create or override agents: what is its own goes in the `## Critical risk` section of its CLAUDE.md, the doc it points to, skills and memory.
 - Delegate with a self-contained briefing: the goal, the files it owns, the relevant invariants and the evidence already gathered, not the whole conversation. `keel:explore` and `keel:research` start without the CLAUDE.md (`omitClaudeMd`), so it carries the convention the question needs.
 - READ → `keel:explore` (read-only, haiku):
   - when: before opening a third file to understand something; finding where something lives or who calls it; mapping a flow or module that isn't in context; comparing files; inventorying the uses of a symbol; finding a point in a long doc.
   - independent questions go to parallel `keel:explore`s, in the same message. The briefing states the question, where to look and what to return.
   - its "not found" is a hypothesis until the declared search covers the place. When a false negative is costly (a claim to a customer, a critical-risk decision, "nothing else uses this" before deleting), pass `model: sonnet` in the call or check the decisive line in the main session.
 - WRITE the isolable and NON-critical → `keel:implement` (sonnet):
-  - when: a new file (component, screen, script, tool), a test that follows an existing pattern, docs, a mechanical refactor across files, an adjustment with a closed spec.
+  - when: a new file (component, screen, script, tool), docs, a mechanical refactor across files, an adjustment with a closed spec.
   - the briefing adds the skill or doc rule that applies, the test that must pass with the focused command it may run, and what not to touch.
-  - several in parallel only with disjoint file sets. A test that only repeats an existing case can go with `model: haiku`.
+  - several in parallel only with disjoint file sets.
   - on return, the main session checks the diff (`git diff -- <files>`), confirms the new test fails without the change and runs the suites.
+- WRITE TESTS → `keel:test` (sonnet; never production code), critical paths included:
+  - the main session decides the behaviors and cases to cover, gives the focused command, and says whether the change is already in the tree.
+  - on return, the main session reviews the test diff line by line, sees the red itself when the agent could not, and runs the suites. A test that only repeats an existing case can go with `model: haiku`.
 - Wide WEB research (comparing providers/tools, reading external docs, gathering prices/limits/rules) → `keel:research` (read-only, sonnet, WebSearch/WebFetch). NEVER run raw web reading in the main context (expensive, more so on Fable); the main session gets only the synthesis and decides.
-- A front with its own commit and hours of work goes to a `--bg` session through the `keel:coordinate-sessions` skill (the project's part lives in its `.claude/coordination/profile.md`); a short fix stays in the current session, with the gate at the end.
+- Short work runs in the main session: a fix of a few files, a review finding, a question, a test run, a doc. Only a front with its own commit and hours of work goes to a `--bg` session (`keel:coordinate-sessions`). In doubt, the main session.
 - The memory index (`MEMORY.md`) loads only its first 200 lines or 25 KB: one short line per memory, and a lesson a project router already points to isn't repeated there.
 
 # Pre-commit gate (subagent `keel:critical-review`)
