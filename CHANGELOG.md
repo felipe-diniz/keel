@@ -1,5 +1,27 @@
 # Changelog
 
+## 3.5.0 — 2026-10-27
+
+- **New skill `showcase`.** Reel (1080x1920), landscape release video (1920x1080 with WebVTT), post art, carousel and covers, from the project's real screens with seed data.
+  - Capture by a JSON plan with login, theme and masking of CPF, CNPJ, phone and e-mail by default; only local hosts or the config's `captureHosts`.
+  - A frame-exact compositor with camera, taps, transitions, and kinetic or word-timed captions; covers and posters only when the text has settled.
+  - Optional ElevenLabs narration and music. The key comes from the environment or the owner's `~/.config/keel/elevenlabs.env` (chmod 600), never read by the agent. Without a key: a silent video with kinetic captions, or a music file mixed to -14 LUFS.
+  - The copy method for social posts and release notes, with the WhatsApp message.
+  - Project config in `.claude/showcase.json`. Node ≥ 20, ffmpeg and Playwright (the project's, or `doctor.mjs --install` into `~/.cache/keel/showcase/`). Ported and generalized from a product's marketing pipeline; the plugin names no project.
+- **New agent `keel:test`.** Writes and fixes tests from the behaviors the main session lists: the red-first test, the regression test of a bug or a gate finding, the cases of an approved change. It loads the project's test skill, runs only the focused command, never touches production code and returns red/green evidence; critical paths are allowed, and the main session reviews the diff and sees the red. `keel:implement` no longer writes tests.
+- **Short work stays in the main session.** The rules and `coordinate-sessions` now say it first: a fix of a few files, a review finding, a question, a test run or a doc never opens a `--bg` session; in doubt, the main session. The skill's description says it is not for short work.
+- **`coordinate-sessions` core from 19,987 to 11,508 bytes.** The state table and the single-resource principles moved to `references/state.md`; the gate that died midway moved to `references/launch.md`. The cap in `tests/test_sizes.py` drops to 12,000.
+- **`--resume` takes the full sessionId.** A short id opens the "Resume session" picker, the session sits there with no model, and messages to it are held until they expire. The launch reference says it and asks to check `logs` right after.
+- `keel:implement` no longer says "in doubt between loading a skill and not, load": a skill loads when the task matches it.
+
+| | 3.4.1 | 3.5.0 |
+|---|---:|---:|
+| `rules.md` | 9,249 | 9,471 |
+| agent, skill and command descriptions | 2,603 | 3,537 (one agent and one skill more) |
+| **every session** (with the 1,966 B output style) | **13,818** | **14,974** |
+| `coordinate-sessions` core (coordinator) | 19,987 | 11,508 |
+| `showcase` core (on invocation) | — | 5,867 |
+
 ## 3.4.1 — 2026-10-25
 
 - **Each front works in its own worktree, never in the checkout.** The coordinator makes it detached at the remote branch (`.claude/worktrees/<session>`) and launches the session from inside it; the front commits there directly. Before, fronts wrote in the checkout and committed with the remote branch as parent, and the push by sha moved the remote but not the checkout: after nine fronts the checkout showed 339 files that were already pushed.

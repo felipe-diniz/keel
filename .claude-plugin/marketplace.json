@@ -10,7 +10,7 @@
     {
       "name": "keel",
       "source": "./plugins/keel",
-      "description": "explore/implement/research/critical-review agents, a single pre-commit gate only for critical risk, the direct output style, agent memory versioned per developer, background session coordination, and the web-craft skill for public sites."
+      "description": "explore/implement/test/research/critical-review agents, a single pre-commit gate only for critical risk, the direct output style, agent memory versioned per developer, background session coordination, the web-craft skill for public sites, and the showcase skill for Reels, release videos, post art and their copy."
     }
   ]
 }

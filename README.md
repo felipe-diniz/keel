@@ -15,7 +15,7 @@ Install it and start working. There is no setup step.
 
 **Lower cost and faster sessions**
 
-- Wide reading goes to `keel:explore` (haiku, read-only), which returns only a synthesis with `file:line` references. Isolated writing goes to `keel:implement` (sonnet). Web research goes to `keel:research` (sonnet). The main context stays small, so each turn is cheaper and compaction comes later.
+- Wide reading goes to `keel:explore` (haiku, read-only), which returns only a synthesis with `file:line` references. Isolated writing goes to `keel:implement` (sonnet), and tests to `keel:test` (sonnet), reviewed by the main session. Web research goes to `keel:research` (sonnet). The main context stays small, so each turn is cheaper and compaction comes later.
 - The lean profile used for background sessions cut the per-call base from 72k to 40k tokens. The skill listing in background sessions went from 22,662 to 4,779 characters.
 - Each rule lives in one place, and a skill keeps a short core with the detail in references read on demand. In 3.4.0 the coordinator's core went from 23,395 to 19,693 bytes, under the 20,000 characters that come back after compaction, and what every session carries stayed at about 13.8 KB with a new skill on board. Test-pinned caps keep it there ([CHANGELOG](CHANGELOG.md)).
 - The 400k compaction window cost the same as 300k in measurement and compacts less often. Each compaction loses detail.
@@ -53,7 +53,8 @@ Install it and start working. There is no setup step.
 | Piece | Name | Role |
 | --- | --- | --- |
 | Agent | `keel:explore` | Wide reading of local code and docs. Read-only, haiku, starts without the CLAUDE.md. |
-| Agent | `keel:implement` | Isolated, non-critical writing: a new file, a test following the pattern, docs, a mechanical refactor. |
+| Agent | `keel:implement` | Isolated, non-critical writing: a new file, docs, a mechanical refactor. |
+| Agent | `keel:test` | Writes and fixes tests from the behaviors the main session lists, critical paths included; never production code. Loads the project's test skill and returns red/green evidence for the main session to review. Sonnet. |
 | Agent | `keel:research` | Web research: providers, external docs, prices, limits, rules. |
 | Agent | `keel:critical-review` | Pre-commit gate for critical risk: review, QA of the critical slice, measurement, tests and the rule's doc. Returns APPROVED or BLOCKED. |
 | Hook | gate | Refuses the gate call without `Request:`, `Scope:`, `Verified:` and `Risk:`, or with a `model`/`effort` override. Asks for confirmation from the 2nd pass in the session. |
@@ -66,6 +67,7 @@ Install it and start working. There is no setup step.
 | Output style | `keel:direct` | Proactive outside critical risk and business rules. Starts with the result, no preamble. A user decision becomes a question with the recommended option first. Comes on with the plugin ([direct.md](plugins/keel/output-styles/direct.md)). |
 | Skill | `/keel:coordinate-sessions` | Coordinates fronts in `claude --bg` sessions. |
 | Skill | `/keel:web-craft` | Public sites and landing pages: design that does not look generic, motion with GSAP, ScrollTrigger and Lenis, Three.js scenes, SEO and AI search, copy, Core Web Vitals and verification on the rendered page. A short core and one reference per topic, read on demand. A project's own design or SEO skill wins where it is more specific. |
+| Skill | `/keel:showcase` | Marketing and release-note media from the project's real screens with seed data: vertical Reel 1080x1920, landscape release video 1920x1080 with WebVTT, post art, carousel and covers, kinetic or word-timed captions, optional ElevenLabs narration and music (a music file works without a key), and the copy method for social posts and release notes with the WhatsApp message. Configured per project in `.claude/showcase.json`; the owner publishes. |
 | Command | `/keel:migrate` | Removes an old manual install and the plugin under its old name (see below). |
 | Command | `/keel:auto-update` | Turns keel's background auto-update on or off, or shows where it stands. A hook turns it on at the first session after the install. |
 | Command | `/keel:memory` | Sets up per-developer versioned memory (see below). |
@@ -308,7 +310,7 @@ Uninstalling leaves the memory links in place, so auto memory keeps writing to `
 .claude-plugin/marketplace.json       marketplace (this repo)
 plugins/keel/
   .claude-plugin/plugin.json          name and version
-  agents/                             the four agents
+  agents/                             the five agents
   hooks/hooks.json                    rules and memory (SessionStart); gate, Bash guard, secret guard (PreToolUse)
   scripts/                            the hooks and the commands, in Python with no dependencies
     rules.py                          puts rules.md in context, and the migration notice
@@ -320,6 +322,7 @@ plugins/keel/
   rules.md                            what goes into context at session start
   skills/coordinate-sessions/         skill, templates and references
   skills/web-craft/                   public-site skill: core and references (design, copy, motion, three, seo, performance, verification)
+  skills/showcase/                    media skill: core, references (setup, config, capture, storyboard, audio, social-post, release-notes) and scripts (doctor, capture, compose, audio, art)
   output-styles/direct.md             response style
   commands/migrate.md                 /keel:migrate
   commands/memory.md                  /keel:memory
