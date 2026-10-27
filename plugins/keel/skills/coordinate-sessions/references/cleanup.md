@@ -37,10 +37,10 @@ Then the same line without `--dry-run`. In a stacked round the close waits for t
 
 ## The sweep, at every session start
 
-The plugin's sweep hook removes, in every project's `$D`, what the §3 table marks, counted from the entry's last
+The plugin's sweep hook removes, in every project's `$D`, what the table in [state.md](state.md) marks, counted from the entry's last
 change: `logs/` after 3 days, `handoff/<session>.md` and `prompts/` after 14, `queue-archive/` after 90. What stays at
 any age: what belongs to a session alive in `agents --json` (when the list can't be read, age alone decides), and what
 `queue.md`, `window.md` or `handoff/coordinator.md` cite by path (`logs/<name>`, `prompts/<name>`, `handoff/<name>`).
 So a tool, evidence or generator that an open item still needs is cited by that path in `queue.md`; once the item
-closes and leaves it, the file expires. The hook also removes the safety refs older than 14 days (§6) and prunes the
+closes and leaves it, the file expires. The hook also removes the safety refs older than 14 days (SKILL §5) and prunes the
 worktrees whose directory has been gone for 14 days. Nobody deletes state by hand.

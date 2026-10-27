@@ -1,7 +1,7 @@
 # Launching and resuming a background session: the details
 
-Read when opening or resuming a front, when a session is born wrong (effort, worktree, wrong checkout), or before
-changing the launch command.
+Read when opening or resuming a front, when a session is born wrong (effort, worktree, wrong checkout) or stuck, or
+before changing the launch command.
 
 - **`--add-dir` is variadic:** always follow it with another option, or it swallows the prompt as a directory. It grants
   the session access to `$D` (HANDOFF and logs).
@@ -38,5 +38,12 @@ changing the launch command.
   `NX_WORKSPACE_ROOT_PATH=<checkout or worktree> NX_DAEMON=false`.
 - **Resuming** continues the same conversation; if it is still running, it opens a copy and warns. Before opening or
   resuming, check in `agents --json` that the owner has not already opened the same front.
+- **`--resume` takes the full sessionId**, never the short id from the listing: a short id opens the "Resume session"
+  picker with "No sessions match", the session sits there with no model running, and every message to it is held and
+  expires (2026-10-27). Right after a launch or resume, check `"$C" logs <id>` shows the turn running.
+- **A gate that died midway:** the hook asks the owner to confirm the 2nd call to `keel:critical-review` in the
+  session. If the 1st dropped with no report, the owner confirms through `attach`, or authorizes closing the session and
+  opening another that continues from the HANDOFF and runs the gate once. Never work around it without the owner's
+  word.
 - **Stopped by the usage limit:** the tick resumes it after the reset ([tick.md](tick.md)); by hand, the same
   `--resume` line with "the limit has reset; continue the interrupted step from your HANDOFF".

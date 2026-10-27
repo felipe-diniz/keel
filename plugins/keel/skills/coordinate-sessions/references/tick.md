@@ -1,6 +1,6 @@
 # The coordinator's tick: warm cache, self-off, resume after the usage limit
 
-Read when arming, handling or deleting the coordinator's recurring cron (§9), or when a front stopped at the usage
+Read when arming, handling or deleting the coordinator's recurring cron (§8), or when a front stopped at the usage
 limit.
 
 ## What the tick is for

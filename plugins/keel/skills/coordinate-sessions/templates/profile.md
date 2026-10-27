@@ -15,10 +15,10 @@ settings, hooks…>, on <date>; what came from the owner is marked with the date
 
 ## Commit
 
-<direct | split> mode (skill §6 and `references/commit-by-index.md`), with these project steps: <sync with the
+<direct | split> mode (skill §5 and `references/commit-by-index.md`), with these project steps: <sync with the
 remote first? generate a file that only the tool writes?>. Message: <commitlint rule, language>.
 
-## Commands (data only; who runs what is the skill's §7)
+## Commands (data only; who runs what is the skill's §6)
 
 - Focused, for a front: test of one file or spec `<command>`; lint of files `<command>`; typecheck of one project
   `<command>`.

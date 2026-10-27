@@ -8,12 +8,12 @@ and the prompt "run the keel:coordinate-sessions skill and resume coordination; 
 terminal it could not stop itself, and pending notices would wake it. At the end-of-round checkpoint, in place of the
 `/clear` notice:
 
-1. it writes the checkpoint (§3) and deletes its tick (`CronList`, `CronDelete`);
+1. it writes the checkpoint (§8) and deletes its tick (`CronList`, `CronDelete`);
 2. it opens the successor `<prefix>-coord-<n+1>` with the same command and the same prompt;
 3. it checks in `agents --json` that it is alive;
 4. it ends itself with `"$C" stop <its own id, found by name in the same JSON>` and does nothing more.
 
-The successor follows "Resuming after the `/clear`" (§9): it sends the new name to each live session, with
+The successor follows "Resuming after the `/clear`" (§8): it sends the new name to each live session, with
 `notify_when_idle`, and arms its own tick when a front is live. Measured on 2026-10-20: the successor is born and takes
 over, the old one leaves the list, and the front answers the new one by name.
 

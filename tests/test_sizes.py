@@ -12,7 +12,7 @@ SKILLS = PLUGIN / "skills"
 # only its first 20,000 characters come back. The footer goes into every front's prompt.
 CAPS = {
     "rules.md": 9_600,
-    "skills/coordinate-sessions/SKILL.md": 20_000,
+    "skills/coordinate-sessions/SKILL.md": 12_000,
     "skills/coordinate-sessions/templates/footer.md": 6_000,
     "skills/web-craft/SKILL.md": 6_000,
 }

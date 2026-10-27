@@ -16,7 +16,7 @@ Invariants (non-negotiable): <those from the project's critical-risk doc that th
 
 Before writing: the skills <of the layer the front touches> via the Skill tool, only with the references of the topic; the project's critical-risk doc and only the reference of the touched domain <which>; the memories <of the domain>.
 
-Proof (skill coordinate-sessions, §7): <focused | critical: own suites and `keel:critical-review` before the commit>, <the why, in one line>. Tests (the project's test skill, if any): the test first and the red seen; <cases: CAS with count 0 and 1, other tenant blocked, timezone near midnight, hostile argument, no-op retry…>.
+Proof (skill coordinate-sessions, §6): <focused | critical: own suites and `keel:critical-review` before the commit>, <the why, in one line>. Tests (the project's test skill, if any): the test first and the red seen; <cases: CAS with count 0 and 1, other tenant blocked, timezone near midnight, hostile argument, no-op retry…>.
 
 Delivery check (what you hand back measured, never asserted): <1) the tests of what changed, with the count; 2) the lint/typecheck of the files; 3) only if this front needs it before the integration gate: the one suite, E2E or screen it names>.
 

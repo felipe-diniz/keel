@@ -3,7 +3,7 @@
 Read when the fronts of a round have committed and the coordinator runs the single gate, when that gate fails, or
 before a push.
 
-The fronts commit with the focused proof only (SKILL §7). The full proof (suites, build, E2E, measurement bench,
+The fronts commit with the focused proof only (SKILL §6). The full proof (suites, build, E2E, measurement bench,
 screens, what the profile lists under the integration gate) runs once, in the coordinator, over the stack of commits of
 every closed front. Nine fronts, one gate.
 
@@ -37,7 +37,7 @@ every closed front. Nine fronts, one gate.
 
 - Write `gate: <TIP> green <date>` in `queue.md`, with the command and the log of each number.
 - The push takes exactly the gated sha, `git push <remote> <TIP>:<branch>`, with the owner's yes and by the profile's
-  path (§6). A commit that landed on top after the gate goes to the next gate.
+  path (§5). A commit that landed on top after the gate goes to the next gate.
 - Then close each front of the stack (§3, `--close` with its `--sha`: it removes the front's worktree, refuses if the
   checkout holds the front's files, and fast-forwards the clean checkout to the pushed tip) and remove the integration
   worktree (`git worktree remove "$D/gate"`).
