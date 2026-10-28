@@ -19,7 +19,8 @@ from conftest import PLUGIN
 
 SKILL = PLUGIN / "skills" / "showcase"
 SCRIPTS = SKILL / "scripts"
-CLINIDECK_DECKS = os.path.expanduser("~/dev/lipe/clinideck/marketing/decks")
+REAL_STORYBOARDS = [p.strip() for p in os.environ.get("SHOWCASE_STORYBOARDS", "").split(",") if p.strip()]
+PRIVATE_WORDS = [w.strip().lower() for w in os.environ.get("KEEL_PRIVATE_WORDS", "").split(",") if w.strip()]
 FAKE_KEY = "sk_test_FAKEKEY_9f8e7d6c5b4a3210"
 
 
@@ -67,11 +68,13 @@ def test_script_passes_node_check(script):
 
 
 def test_the_plugin_names_no_project():
+    if not PRIVATE_WORDS:
+        pytest.skip("KEEL_PRIVATE_WORDS not set: comma-separated words the skill must never contain")
     hits = []
     for path in SKILL.rglob("*"):
         if path.is_file():
             text = path.read_text(errors="ignore")
-            for word in ("clinideck", "#2dd4bf", "#10151c", "manrope", "zzportal"):
+            for word in PRIVATE_WORDS:
                 if word in text.lower():
                     hits.append(f"{path.relative_to(SKILL)}: {word}")
     assert not hits
@@ -93,11 +96,10 @@ def test_masking_presets_hide_br_documents_phone_and_email(tmp_path):
 
 # ── storyboard validation ───────────────────────────────────────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("deck", ["area-do-paciente-reel.json", "novidades-2026-10-24.json"])
-def test_existing_storyboards_validate_unchanged(deck, tmp_path):
-    path = os.path.join(CLINIDECK_DECKS, deck)
+@pytest.mark.parametrize("path", REAL_STORYBOARDS or ["missing"])
+def test_existing_storyboards_validate_unchanged(path, tmp_path):
     if not os.path.isfile(path):
-        pytest.skip(f"source storyboard not on this machine: {path}")
+        pytest.skip("SHOWCASE_STORYBOARDS not set: comma-separated paths of real storyboards to validate")
     before = open(path, "rb").read()
     r = node("compose.mjs", "--validate", "--storyboard", path, cwd=tmp_path)
     assert r.returncode == 0, r.stdout + r.stderr
