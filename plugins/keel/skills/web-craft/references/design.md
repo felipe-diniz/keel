@@ -10,6 +10,13 @@ Read when you create, change or review the visual design of a landing page, home
 - Why: a product screenshot on a page with another visual language looks like another system. Drift between pages is the signature of generated pages.
 - Shared with the app: rectangular buttons, no em dash, AA contrast, 44px touch targets, zero horizontal scroll.
 
+## Keep the brand
+
+- A redesign starts from the current site rendered: capture it, then list the palette in hex (from the stylesheet and the screen), gradients, fonts, the photo and every signature element (credential badge, decorative shapes, floating contact button, CTA style).
+- The new page refines that list. It does not replace it with neutral or "safer" tokens. Dark mode derives from the same hues.
+- The brand wins over the rules below: a brand gradient on the CTA stays, a warm accent used in several places stays. Fix contrast inside the brand's hues, not by leaving them.
+- Show the owner the old and new hero side by side before building the rest.
+
 ## Hierarchy and type
 
 - Use a display scale. Size follows the width of the text column, not the screen.
@@ -31,7 +38,7 @@ Read when you create, change or review the visual design of a landing page, home
 
 ## Color, surfaces, theme
 
-- Color only where there is a decision. Brand accent in at most 1 or 2 saturated places per screen.
+- Color only where there is a decision. Brand accent in at most 1 or 2 saturated places per screen, unless the existing brand uses more (Keep the brand).
 - Status colors are separate from the brand accent. Status is never color alone; add a text label.
 - Stay away from purple or blue gradients and neon accents.
 - Surfaces are opaque. Translucency and blur are only for temporary overlays (dropdown, sheet, backdrop).

@@ -3,8 +3,9 @@
 Read when you add scroll, entrance or pointer motion (GSAP, Lenis, CSS scroll-driven) to a marketing page, or decide whether a device should get it.
 
 ## When motion is worth it
-- Motion communicates what changed. If it communicates nothing, remove it.
-- Marketing pages may carry authored motion across the scroll. App screens used all day get none.
+- On a marketing page authored motion is the default, not an extra: it directs the eye, paces the story and gives the brand its character. A new site or redesign ships the layers in [stack](stack.md).
+- Each act has a reason (direct, reveal, pace, show depth). A tween with no reason goes; the layer stays.
+- App screens used all day get none.
 - Content stays server HTML, readable without JS, and never hurts LCP, CLS or INP.
 - Phone is first class. A desktop-only technique cannot carry the meaning of the page.
 - Measure LCP, CLS and total blocking time before and after. If worse beyond run-to-run variance, remove it.

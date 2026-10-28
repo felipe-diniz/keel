@@ -66,7 +66,7 @@ Install it and start working. There is no setup step.
 | Hook | memory secret guard | Refuses a Write or Edit into memory that contains a credential. |
 | Output style | `keel:direct` | Proactive outside critical risk and business rules. Starts with the result, no preamble. A user decision becomes a question with the recommended option first. Comes on with the plugin ([direct.md](plugins/keel/output-styles/direct.md)). |
 | Skill | `/keel:coordinate-sessions` | Coordinates fronts in `claude --bg` sessions. |
-| Skill | `/keel:web-craft` | Public sites and landing pages: design that does not look generic, motion with GSAP, ScrollTrigger and Lenis, Three.js scenes, SEO and AI search, copy, Core Web Vitals and verification on the rendered page. A short core and one reference per topic, read on demand. A project's own design or SEO skill wins where it is more specific. |
+| Skill | `/keel:web-craft` | Public sites and landing pages: design that does not look generic and keeps the brand, motion with GSAP, ScrollTrigger and Lenis plus a Three.js scene delivered by default on a new site or redesign (ready recipe in `stack.md`), ideas brought unasked and a share-ready link (`proactive.md`), SEO and AI search, copy, Core Web Vitals and verification on the rendered page. A short core and one reference per topic, read on demand. A project's own design or SEO skill wins where it is more specific. |
 | Skill | `/keel:showcase` | Marketing and release-note media from the project's real screens with seed data: vertical Reel 1080x1920, landscape release video 1920x1080 with WebVTT, post art, carousel and covers, kinetic or word-timed captions, optional ElevenLabs narration and music (a music file works without a key), and the copy method for social posts and release notes with the WhatsApp message. Configured per project in `.claude/showcase.json`; the owner publishes. |
 | Command | `/keel:migrate` | Removes an old manual install and the plugin under its old name (see below). |
 | Command | `/keel:auto-update` | Turns keel's background auto-update on or off, or shows where it stands. A hook turns it on at the first session after the install. |
@@ -321,7 +321,7 @@ plugins/keel/
     migrate.py                        /keel:migrate
   rules.md                            what goes into context at session start
   skills/coordinate-sessions/         skill, templates and references
-  skills/web-craft/                   public-site skill: core and references (design, copy, motion, three, seo, performance, verification)
+  skills/web-craft/                   public-site skill: core and references (stack, proactive, design, copy, motion, three, seo, performance, verification)
   skills/showcase/                    media skill: core, references (setup, config, capture, storyboard, audio, social-post, release-notes) and scripts (doctor, capture, compose, audio, art)
   output-styles/direct.md             response style
   commands/migrate.md                 /keel:migrate

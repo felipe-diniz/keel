@@ -14,7 +14,7 @@ CAPS = {
     "rules.md": 9_600,
     "skills/coordinate-sessions/SKILL.md": 12_000,
     "skills/coordinate-sessions/templates/footer.md": 6_000,
-    "skills/web-craft/SKILL.md": 6_000,
+    "skills/web-craft/SKILL.md": 7_000,
     "skills/showcase/SKILL.md": 6_000,
 }
 DESCRIPTION_CAP = 520

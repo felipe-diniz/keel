@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.5.1 — 2026-10-27
+
+- **`web-craft` is proactive: modern by default.** A new site, a redesign or "modernize" now delivers, without being asked, GSAP + ScrollTrigger + SplitText acts, light parallax, Lenis, pointer tilt and a Three.js scene behind the hero, each behind the gate. A sober page with no motion fails the review; leaving a layer out is the owner's call. Before, "decide the motion budget" and "a scene only when depth carries meaning" read as permission to ship none, and a redesign came out static.
+- **Keep the brand.** A redesign starts from the current site rendered and keeps its palette, gradients, type and signature elements (credential badge, shapes, floating contact button). Swapping them for neutral tokens fails the review; the brand wins over the generic-pattern table.
+- **Ideas and share-ready, unasked.** New reference `proactive.md`: the posture (bring the ideas, ask only what is the owner's), a catalog of ideas shipped on a real landing (full-screen scenes with an overlap hand-off, fit zoom on short laptops, header that hides on scroll, floating contact, credential badge, booking with no void), the share-ready delivery (share card rendered from the brand with Playwright, OG with alt, `SHARE_ORIGIN` for the preview link, sitemap without anchors, robots off transactional routes, check as the crawler, the `?v=N` hint) and the layout probe by script. A link that previews no card or an old logo fails the review.
+- **New reference `stack.md`.** The ready recipe from a shipped landing: default delivery per device, the files (gate, boot, engine, scene), the boot and engine skeletons, the `data-*` markup contract, one act per section type, hero scene concepts tied to the brand and the delivery check. The session no longer has to study another repo to build the layer.
+
 ## 3.5.0 — 2026-10-27
 
 - **New skill `showcase`.** Reel (1080x1920), landscape release video (1920x1080 with WebVTT), post art, carousel and covers, from the project's real screens with seed data.
