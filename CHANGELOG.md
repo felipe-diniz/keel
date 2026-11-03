@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.6.1 — 2026-11-03
+
+- **The effort hook finds the model without `model` in the input.** Measured on Claude Code 2.1.317: the SessionStart input has no `model` at `startup` (CLI and VS Code), and `model` in settings is an alias (`opus[1m]`), so 3.6.0 saved nothing and sessions kept starting at `medium`. The hook now takes the id from the newest session transcript (the last main-thread assistant message, the session's own skipped). A new model is picked up from its first session's transcript.
+
 ## 3.6.0 — 2026-11-03
 
 - **Effort `high` by default, new models included.** Opus 5.5 and newer ignore a top-level `effortLevel` in `~/.claude/settings.json` and start at their own default (`medium` on the 5.5 family) until a level is saved for them under `modelSettings.<model id>`; a new model starts without an entry, so `/effort high` had to be run again on every release. A plugin can't set the session's effort (a plugin's `settings.json` takes only `agent` and `subagentStatusLine`, and SessionStart output doesn't change it), so the new SessionStart hook `effort.py` reads the session's `model` and, when nothing decides its effort, saves `high` for it in the user's settings, with a backup. It applies from the next session on; the first session on a new model still starts at its default.

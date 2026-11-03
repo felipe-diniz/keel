@@ -8,6 +8,11 @@ this reads the session's `model` from the hook input and, when nothing decides i
 `modelSettings.<id>.effortLevel = "high"` into the user's `settings.json`, with a backup in ~/.claude/backups/, and
 prints one line. It applies from the next session on: the open one keeps the effort it started with.
 
+The SessionStart input often has no `model` (measured on 2.1.317: absent at `startup`, in the CLI and in VS Code), and
+`model` in settings is usually an alias (`opus[1m]`). Then the id comes from the newest session transcript under
+`<home>/projects`: the model of its last main-thread assistant message, the id the alias resolved to. A new model is
+picked up from its first session's transcript, so its second session on is at `high`.
+
 It never writes over a decision: a saved level for that model (a `/effort low` included), `CLAUDE_CODE_EFFORT_LEVEL`,
 and an `effortLevel` or an entry for that model in managed settings or in the project's settings all win. It only acts
 on a Claude model id from 5.5 on (older ones honor the top-level `effortLevel`, and some default above `high`), and it
@@ -55,6 +60,44 @@ def canonical(model):
     if not match or (int(match.group(1)), int(match.group(2))) < FIRST_VERSION:
         return None
     return key
+
+
+def transcript_model(skip=None, files=20, tail=1 << 20):
+    """The canonical id of the last main-thread assistant message in the newest transcripts; None when none has one."""
+    root = os.path.join(home(), "projects")
+    try:
+        paths = [os.path.join(root, folder, name) for folder in os.listdir(root)
+                 if os.path.isdir(os.path.join(root, folder))
+                 for name in os.listdir(os.path.join(root, folder)) if name.endswith(".jsonl")]
+    except OSError:
+        return None
+    skip = os.path.abspath(skip) if skip else None
+    paths = sorted((path for path in paths if os.path.abspath(path) != skip), key=mtime, reverse=True)
+    for path in paths[:files]:
+        try:
+            with open(path, "rb") as handle:
+                handle.seek(max(0, os.path.getsize(path) - tail))
+                lines = handle.read().decode("utf-8", "replace").splitlines()
+        except OSError:
+            continue
+        for line in reversed(lines):
+            try:
+                entry = json.loads(line)
+            except ValueError:
+                continue
+            if not isinstance(entry, dict) or entry.get("type") != "assistant" or entry.get("isSidechain"):
+                continue
+            key = canonical((entry.get("message") or {}).get("model"))
+            if key:
+                return key
+    return None
+
+
+def mtime(path):
+    try:
+        return os.path.getmtime(path)
+    except OSError:
+        return 0
 
 
 def load(path):
@@ -128,10 +171,11 @@ def write(key):
 
 
 def hook(event):
-    key = canonical((event or {}).get("model"))
+    event = event or {}
+    key = canonical(event.get("model")) or transcript_model(event.get("transcript_path"))
     if not key:
         return ""
-    if outside_decision(key, (event or {}).get("cwd") or os.getcwd()):
+    if outside_decision(key, event.get("cwd") or os.getcwd()):
         return ""
     data = load(user_settings())[1]
     if data is None or saved_level(data, key):
@@ -236,7 +280,23 @@ def self_test():
         check("no settings file: created", level("claude-opus-5-5") == "high")
 
         project = fresh_home("no-model", json.dumps({}))
-        check("no model in the input: nothing", hook({"cwd": project}) == "" and load(user_settings())[1] == {})
+        check("no model in the input nor a transcript: nothing",
+              hook({"cwd": project}) == "" and load(user_settings())[1] == {})
+
+        project = fresh_home("from-transcript", json.dumps({}))
+        lines = [{"type": "assistant", "message": {"model": "claude-opus-5-6"}},
+                 {"type": "assistant", "isSidechain": True, "message": {"model": "claude-haiku-5-5"}},
+                 {"type": "assistant", "message": {"model": "<synthetic>"}}, {"type": "user"}]
+        put(os.path.join(home(), "projects", "-repo", "old.jsonl"),
+            json.dumps({"type": "assistant", "message": {"model": "claude-opus-5-5"}}) + "\n")
+        put(os.path.join(home(), "projects", "-repo", "new.jsonl"), "\n".join(json.dumps(x) for x in lines) + "\nnot json\n")
+        os.utime(os.path.join(home(), "projects", "-repo", "old.jsonl"), (1, 1))
+        current = os.path.join(home(), "projects", "-repo", "current.jsonl")
+        put(current, json.dumps({"type": "assistant", "message": {"model": "claude-sonnet-5-5"}}) + "\n")
+        hook({"cwd": project, "transcript_path": current})
+        check("no model in the input: the newest transcript's main-thread model, the session's own skipped",
+              level("claude-opus-5-6") == "high" and level("claude-sonnet-5-5") is None
+              and level("claude-haiku-5-5") is None and level("claude-opus-5-5") is None)
 
         project = fresh_home("old-model", json.dumps({}))
         check("model before 5.5: nothing",
