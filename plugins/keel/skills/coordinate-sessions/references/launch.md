@@ -13,7 +13,7 @@ before changing the launch command.
 - **Model and effort are inherited:** neither `--model` nor `--effort`, on any front, the critical-risk one included. The
   session is born at the effort its settings give its model: the level saved with `/effort` (per model, under
   `modelSettings`) or an `effortLevel` in the repo's settings; a top-level `effortLevel` in `~/.claude/settings.json`
-  doesn't count for Opus 5.5 or newer, which then start at `medium`. `max` is only for the gate, through the frontmatter of
+  doesn't count for Opus 5.5 or newer, which then start at `medium` (keel's effort hook saves `high` for a model with no level, from its second session on). `max` is only for the gate, through the frontmatter of
   `keel:critical-review`. Depth on a step is `ultrathink`. This rule holds by the file: an old copy of the skill in the
   context (or preserved by compaction) once ordered `--effort max` and opened four fronts at `max` (2026-10-16); before
   launching, check the command in the skill.

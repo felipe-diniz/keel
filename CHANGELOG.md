@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.6.0 — 2026-11-03
+
+- **Effort `high` by default, new models included.** Opus 5.5 and newer ignore a top-level `effortLevel` in `~/.claude/settings.json` and start at their own default (`medium` on the 5.5 family) until a level is saved for them under `modelSettings.<model id>`; a new model starts without an entry, so `/effort high` had to be run again on every release. A plugin can't set the session's effort (a plugin's `settings.json` takes only `agent` and `subagentStatusLine`, and SessionStart output doesn't change it), so the new SessionStart hook `effort.py` reads the session's `model` and, when nothing decides its effort, saves `high` for it in the user's settings, with a backup. It applies from the next session on; the first session on a new model still starts at its default.
+- It never writes over a decision: a level saved with `/effort` (under any spelling of the id), `CLAUDE_CODE_EFFORT_LEVEL`, and an `effortLevel` or an entry for the model in managed or project settings win. Only Claude ids from 5.5 on: older ones honor the top-level `effortLevel`, and some default above `high`. `python3 plugins/keel/scripts/effort.py status` shows what decides each model.
+
 ## 3.5.1 — 2026-10-27
 
 - **`web-craft` is proactive: modern by default.** A new site, a redesign or "modernize" now delivers, without being asked, GSAP + ScrollTrigger + SplitText acts, light parallax, Lenis, pointer tilt and a Three.js scene behind the hero, each behind the gate. A sober page with no motion fails the review; leaving a layer out is the owner's call. Before, "decide the motion budget" and "a scene only when depth carries meaning" read as permission to ship none, and a redesign came out static.
