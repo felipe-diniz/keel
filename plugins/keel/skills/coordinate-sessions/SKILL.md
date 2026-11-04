@@ -84,8 +84,9 @@ ages: [references/state.md](references/state.md). Each front is closed at once w
 cat "$D/prompts/<front>.md" ${CLAUDE_SKILL_DIR}/templates/footer.md "$P_DIR/session.md" > "$D/logs/<name>.prompt.md"
 ```
 
-Replace `<COORDINATOR-NAME>`, `<SESSION-NAME>`, `<D>`, `<SKILL_DIR>` (= `${CLAUDE_SKILL_DIR}`) and the `<...>` of the
-front part, which follows [templates/front.md](templates/front.md):
+Replace `<COORDINATOR-NAME>` and `<COORDINATOR-ID>` (your name and full sessionId as `agents --json` shows them right
+before the launch: in the desktop app the name is the session title, which the app can change; rename it back),
+`<SESSION-NAME>`, `<D>`, `<SKILL_DIR>` (= `${CLAUDE_SKILL_DIR}`) and the `<...>` of the front part, which follows [templates/front.md](templates/front.md):
 
 1. The owner's request **in their words**, with the date, and their literal decision or approval with scope.
 2. The contract (PRD, plan, ADR) and the code map already checked, so the session does not rediscover them.
@@ -141,8 +142,8 @@ asks the owner's confirmation: the owner answers through `attach`; never work ar
 - **The tick:** with a front live, one cron every 30 min runs `scripts/coordination-tick.py`; act on its one line
   ([references/tick.md](references/tick.md)).
 - **Resuming after `/clear`:** read the profile, `queue.md`, `window.md` and `handoff/coordinator.md`, not the old
-  conversation; check `agents --json`, renew each `notify_when_idle`, arm the tick; warn the live sessions if the
-  coordinator's name changed.
+  conversation; check `agents --json`, renew each `notify_when_idle`, arm the tick; send the live sessions the
+  coordinator's name and sessionId if either changed.
 - **Autonomous run:** relay instead of `/clear` ([references/relay.md](references/relay.md)).
 - **Long output to a file** in `$D/logs/<session>/`; only the summary enters the context.
 - **A skill comes in through its core** and only the topic's references.

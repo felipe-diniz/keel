@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.6.2 — 2026-11-04
+
+- **A front writes to the coordinator by name and sessionId.** The footer carries `<COORDINATOR-ID>` next to `<COORDINATOR-NAME>`. When the name does not resolve, the front sends to the row with that sessionId, never to "this project's active coordinator"; with no such row it writes its report in the HANDOFF and stops. Measured on 2026-11-04: the desktop app retitled the coordinator, the name stopped resolving, and two fronts' reports went to an idle coordinator of an earlier round on the same checkout. The coordinator reads its own name and sessionId in `agents --json` right before each launch, and the relay and the resume after `/clear` send both.
+
 ## 3.6.1 — 2026-11-03
 
 - **The effort hook finds the model without `model` in the input.** Measured on Claude Code 2.1.317: the SessionStart input has no `model` at `startup` (CLI and VS Code), and `model` in settings is an alias (`opus[1m]`), so 3.6.0 saved nothing and sessions kept starting at `medium`. The hook now takes the id from the newest session transcript (the last main-thread assistant message, the session's own skipped). A new model is picked up from its first session's transcript.

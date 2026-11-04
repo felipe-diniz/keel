@@ -13,7 +13,7 @@ terminal it could not stop itself, and pending notices would wake it. At the end
 3. it checks in `agents --json` that it is alive;
 4. it ends itself with `"$C" stop <its own id, found by name in the same JSON>` and does nothing more.
 
-The successor follows "Resuming after the `/clear`" (§8): it sends the new name to each live session, with
+The successor follows "Resuming after the `/clear`" (§8): it sends the new name and sessionId to each live session, with
 `notify_when_idle`, and arms its own tick when a front is live. Measured on 2026-10-20: the successor is born and takes
 over, the old one leaves the list, and the front answers the new one by name.
 
