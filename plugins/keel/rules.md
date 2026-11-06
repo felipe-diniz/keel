@@ -58,7 +58,7 @@ When summarizing the conversation at compaction, preserve:
 - The current goal and the user's request in their words; decisions made and why.
 - The user's explicit approvals, literal and with scope (what, where). Never record an implicit approval.
 - Changed files (path + state: done, pending, uncommitted) and commits made.
-- Next steps and open questions.
+- Next steps, open questions and work a newer request paused (files, what is left).
 - Errors, cause and fix; validation commands (test/lint/build) with the real result.
 - The critical-risk domain at stake and the invariants already checked.
 - Pre-commit gate: if it already ran in this session, the verdict, the findings still open and whether a re-review is marked.

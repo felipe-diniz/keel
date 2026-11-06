@@ -594,6 +594,41 @@ def close(argv):
     return "\n".join(out + lines)
 
 
+UNREGISTERED_SHOWN = 5
+
+
+def unregistered_changes(cwd, state_root):
+    """A warning when the checkout holds tracked changes that the coordination's open state does not cite.
+
+    Main-session work interrupted by a newer request lives only in the conversation, and the compaction summary can drop
+    it: the change stays in the tree with nobody to finish it. Citing the path in `queue.md` (or the coordinator's
+    handoff), as paused work or as the owner's WIP, silences it.
+    """
+    try:
+        top = git(cwd, "rev-parse", "--show-toplevel")
+        if top.returncode != 0:
+            return ""
+        checkout = top.stdout.strip()
+        state = os.path.join(state_root, os.path.basename(checkout))
+        if not any(os.path.isfile(os.path.join(state, name)) for name in ("queue.md", "fila.md")):
+            return ""
+        text = open_state(state)
+        paths = dirty_paths(checkout, tracked_only=True)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    if text is None or not paths:
+        return ""
+    missing = sorted({path for path in paths if path not in text})
+    if not missing:
+        return ""
+    shown = ", ".join(missing[:UNREGISTERED_SHOWN])
+    more = " (+{} more)".format(len(missing) - UNREGISTERED_SHOWN) if len(missing) > UNREGISTERED_SHOWN else ""
+    return ("keel: {} file(s) changed in the checkout and not cited by the coordination's open state ({}): {}{}. "
+            "This session's interrupted work: record it in queue.md with what is left before anything else. "
+            "The owner's WIP: cite it there as the owner's.\n").format(
+                len(missing), os.path.join(state, "queue.md"), shown, more)
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if argv == ["--self-test"]:
@@ -609,6 +644,7 @@ def main(argv=None):
         files = sweep_state(os.path.expanduser(STATE_ROOT), live_names(), time.time())
         refs = sweep_repo(cwd, datetime.date.today())
         sys.stdout.write(report(files, refs))
+        sys.stdout.write(unregistered_changes(cwd, os.path.expanduser(STATE_ROOT)))
     except Exception:
         pass
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.6.3 — 2026-11-06
+
+- **Main-session work that a newer request interrupts is recorded before the switch.** `coordinate-sessions` says it in §1: the paused work goes to `queue.md` (files, what is left, the owner's approval) or to a `--bg` session, and the Compact Instructions keep it in the summary. Measured on 2026-11-05: an approved two-file performance fix in the main session was preempted by a production incident, lived only in the conversation, and two compactions dropped it; the files sat uncommitted for a day with nobody to finish them.
+- **The SessionStart sweep warns about a checkout file the open state does not cite.** In a project with a coordination `queue.md`, a tracked change in the checkout whose path no open-state file cites (`queue.md`, `window.md`, `handoff/coordinator.md`) prints one line with up to five paths: record it as this session's paused work, or cite it as the owner's WIP. A front's own worktree is not the checkout and stays quiet; untracked files do not count.
+
 ## 3.6.2 — 2026-11-04
 
 - **A front writes to the coordinator by name and sessionId.** The footer carries `<COORDINATOR-ID>` next to `<COORDINATOR-NAME>`. When the name does not resolve, the front sends to the row with that sessionId, never to "this project's active coordinator"; with no such row it writes its report in the HANDOFF and stops. Measured on 2026-11-04: the desktop app retitled the coordinator, the name stopped resolving, and two fronts' reports went to an idle coordinator of an earlier round on the same checkout. The coordinator reads its own name and sessionId in `agents --json` right before each launch, and the relay and the resume after `/clear` send both.

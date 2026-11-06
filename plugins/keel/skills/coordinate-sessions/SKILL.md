@@ -39,6 +39,9 @@ the coordinator's messages: for short work it is more expensive and slower than 
 | Web research | `keel:research` |
 | Front or phase with its own commit, hours of work, several layers | **`--bg` session** |
 
+- **A request that interrupts main-session work:** before switching, the paused work goes to `queue.md` (files, what
+  is left, the approval) or to a `--bg` session. Compaction drops it; the sweep warns about an uncited checkout file.
+
 - Never open a session to answer a question, fix a review finding, run a test or adjust a front that already closed:
   do it in the main session.
 - In doubt between a session and the main session, the main session.
