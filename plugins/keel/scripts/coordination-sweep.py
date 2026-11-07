@@ -13,7 +13,9 @@ age alone decides), and whatever the open state cites by path (`logs/<name>`, `p
 In the session's repo: the safety refs `refs/keel/backup/<YYYY-MM-DD>-<what>` older than 14 days, and
 `git worktree prune --expire` for the worktrees whose directory has been gone for 14 days.
 
-It prints one line only when it removed something. An internal failure stays quiet.
+It prints one line only when it removed something, and one line for each leftover that weighs: the entries past their
+age that only a citation of the open state keeps, from 50 MB, a `queue.md` past ~12 KB, and the linked worktrees that no
+live session carries and nothing touched for a day. An internal failure stays quiet.
 
 `--close <session> --state <D> [--checkout <repo>] [--sha <sha>...] [--worktree <path>...] [--force-worktree] [--sent]
 [--dry-run]` is the coordinator's close of one front, at once and regardless of age: `logs/<session>/`, the assembled
@@ -22,7 +24,8 @@ the scratch of its job, its worktrees and branch in the checkout, and its lines 
 `<session> <sessionId> <shas> closed` line. It refuses a live session or an unreadable agents list, and refuses when
 the checkout's `git status` lists a file the `--sha` commits touched (the front wrote in the checkout). It keeps what
 the open state or a live front cites, keeps the owner's media until `--sent`, forces out a worktree only when its HEAD
-is on a remote branch and no tracked file changed (untracked leftovers need `--force-worktree`), fast-forwards the
+is on a remote branch, picked onto the upstream (by patch, or with a resolved conflict by subject, author and author
+date) or given by `--sha`, and no tracked file changed (untracked leftovers need `--force-worktree`), fast-forwards the
 checkout's branch to its upstream when no tracked file changed in it, and shows (never runs) the profile's cleanup
 list.
 
@@ -153,8 +156,9 @@ def candidates(state):
                 yield path, folder + "/" + name, owner(path), days
 
 
-def sweep_state(root, live, now):
-    """Removes what expired under `root`; returns [(path, bytes)] of what went."""
+def sweep_state(root, live, now, held=None):
+    """Removes what expired under `root`; returns [(path, bytes)] of what went. `held` gathers (path, bytes) of what
+    expired but stays only because the open state cites it, from `HELD_BYTES` up."""
     removed = []
     if not os.path.isdir(root) or os.path.islink(root):
         return removed
@@ -167,7 +171,11 @@ def sweep_state(root, live, now):
             continue
         for path, relative, key, days in candidates(state):
             try:
-                if relative in cited or is_live(key, live) or now - newest_change(path) < days * DAY:
+                if is_live(key, live) or now - newest_change(path) < days * DAY:
+                    continue
+                if relative in cited:
+                    if held is not None and (size := size_of(path)) >= HELD_BYTES:
+                        held.append((path, size))
                     continue
                 size = size_of(path)
                 if os.path.isdir(path) and not os.path.islink(path):
@@ -178,6 +186,79 @@ def sweep_state(root, live, now):
             except OSError:
                 pass
     return removed
+
+
+HELD_BYTES = 50 * 1048576
+QUEUE_CAP_BYTES = 12 * 1024
+
+
+def held_warning(held, root):
+    """A warning for the heavy entries that only a citation keeps, and for a `queue.md` grown past its cap: a diary
+    left in it keeps citing the logs of closed fronts, and they never expire."""
+    lines = []
+    if held:
+        megabytes = sum(size for _, size in held) / 1048576
+        shown = ", ".join("{} ({:.0f} MB)".format(os.path.relpath(path, root), size / 1048576)
+                          for path, size in sorted(held, key=lambda item: -item[1])[:5])
+        lines.append("keel: {:.0f} MB kept past their age only because queue.md, window.md or the coordinator's "
+                     "handoff cite them: {}. When the item that needs them closed, move its lines to queue-archive/ "
+                     "and they expire.".format(megabytes, shown))
+    if os.path.isdir(root) and not os.path.islink(root):
+        for project in sorted(os.listdir(root)):
+            for name in ("queue.md", "fila.md"):
+                path = os.path.join(root, project, name)
+                try:
+                    size = os.path.getsize(path)
+                except OSError:
+                    continue
+                if size > QUEUE_CAP_BYTES:
+                    lines.append("keel: {}/{} is {:.0f} KB, past its ~8 KB cap: it holds only what is open; move the "
+                                 "closed diary to queue-archive/.".format(project, name, size / 1024))
+    return "".join(line + "\n" for line in lines)
+
+
+ORPHAN_DAYS = 1
+ORPHANS_SHOWN = 8
+
+
+def worktree_paths(checkout):
+    """The linked worktrees of the checkout (not the checkout itself), or [] when git can't list them."""
+    result = git(checkout, "worktree", "list", "--porcelain")
+    if result.returncode != 0:
+        return []
+    paths = [line[len("worktree "):] for line in result.stdout.splitlines() if line.startswith("worktree ")]
+    return [path for path in paths if os.path.realpath(path) != os.path.realpath(checkout)]
+
+
+def orphan_worktrees(cwd, live, now, days=ORPHAN_DAYS):
+    """A warning naming the worktrees that no live session carries and nothing touched for `days`: a front closed
+    without `--close`, a close that left one, or an integration worktree after its push. Each costs the repo's whole
+    checkout on disk."""
+    if live is None:
+        return ""
+    try:
+        top = git(cwd, "rev-parse", "--show-toplevel")
+        if top.returncode != 0:
+            return ""
+        idle = []
+        for path in worktree_paths(top.stdout.strip()):
+            name = os.path.basename(path.rstrip("/"))
+            if is_live(name, live):
+                continue
+            admin = git(path, "rev-parse", "--absolute-git-dir")
+            if admin.returncode != 0:
+                continue
+            if now - newest_change(admin.stdout.strip()) >= days * DAY:
+                idle.append(name)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    if not idle:
+        return ""
+    shown = ", ".join(idle[:ORPHANS_SHOWN]) + (" (+{} more)".format(len(idle) - ORPHANS_SHOWN)
+                                               if len(idle) > ORPHANS_SHOWN else "")
+    return ("keel: {} worktree(s) with no live session, idle for {} day(s) or more: {}. Close each with "
+            "`coordination-sweep.py --close <name> --checkout <repo>` (an integration worktree too, after its push); "
+            "one it leaves says why.\n").format(len(idle), days, shown)
 
 
 def git(cwd, *args, timeout=8):
@@ -386,7 +467,25 @@ def published(worktree, upstream=None, shas=()):
         cherry = git(worktree, "cherry", upstream, "HEAD")
         if cherry.returncode == 0:
             left -= {line[2:] for line in cherry.stdout.splitlines() if line.startswith("- ")}
+    if left and upstream:
+        left -= picked_by_authorship(worktree, upstream, left)
     return not {sha for sha in left if not any(sha.startswith(given) for given in shas if len(given) >= 7)}
+
+
+AUTHORSHIP = "%H%x00%s%x00%ae%x00%at"
+
+
+def picked_by_authorship(worktree, upstream, shas):
+    """The commits among `shas` that the upstream carries with another patch: a cherry-pick whose conflict was resolved
+    by hand keeps the subject, the author and the author's date, and `git cherry` no longer sees it. A different commit
+    that only shares the subject has another author date."""
+    mine = git(worktree, "log", "--no-walk=unsorted", "--format=" + AUTHORSHIP, *sorted(shas), timeout=60)
+    theirs = git(worktree, "log", "--format=" + AUTHORSHIP, upstream, "--not", "HEAD", timeout=60)
+    if mine.returncode != 0 or theirs.returncode != 0:
+        return set()
+    upstream_keys = {tuple(line.split("\0")[1:]) for line in theirs.stdout.splitlines() if line}
+    return {line.split("\0")[0] for line in mine.stdout.splitlines()
+            if line and tuple(line.split("\0")[1:]) in upstream_keys}
 
 
 def remove_worktree(checkout, path, branch, force, upstream=None, shas=()):
@@ -641,9 +740,12 @@ def main(argv=None):
             cwd = json.load(sys.stdin).get("cwd") or os.getcwd()
         except (ValueError, AttributeError):
             cwd = os.getcwd()
-        files = sweep_state(os.path.expanduser(STATE_ROOT), live_names(), time.time())
+        live, held, now = live_names(), [], time.time()
+        files = sweep_state(os.path.expanduser(STATE_ROOT), live, now, held)
         refs = sweep_repo(cwd, datetime.date.today())
         sys.stdout.write(report(files, refs))
+        sys.stdout.write(held_warning(held, os.path.expanduser(STATE_ROOT)))
+        sys.stdout.write(orphan_worktrees(cwd, live, now))
         sys.stdout.write(unregistered_changes(cwd, os.path.expanduser(STATE_ROOT)))
     except Exception:
         pass

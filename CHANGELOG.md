@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.6.4 — 2026-11-06
+
+- **The close takes out a worktree whose commit was picked with a resolved conflict.** The coordinator stacks each front's commits on the upstream and, when a shared generated file conflicts (an index), resolves it by hand: the patch changes and `git cherry` no longer sees the commit upstream, so the close left the worktree and reported it as unintegrated. The close now also matches a commit by subject, author email and author date, which a cherry-pick keeps; a commit that only shares the subject has another author date and still holds its worktree. Measured on 2026-11-06: fourteen worktrees of finished fronts, 64 GB, every commit on the upstream under another sha.
+- **The SessionStart sweep names what it keeps that weighs.** One line for the linked worktrees that no live session carries and nothing touched for a day (a front closed without `--close`, a close that left one, an integration worktree after its push), one for the entries past their age, from 50 MB, that only a citation of the open state keeps, and one for a `queue.md` past ~12 KB. Measured on the same day: 1.3 GB of a front shipped five days before stayed because a 439-line diary in `queue.md` still cited its logs.
+- `cleanup.md` says that the integration worktree closes with `--close <its name>` right after its push.
+
 ## 3.6.3 — 2026-11-06
 
 - **Main-session work that a newer request interrupts is recorded before the switch.** `coordinate-sessions` says it in §1: the paused work goes to `queue.md` (files, what is left, the owner's approval) or to a `--bg` session, and the Compact Instructions keep it in the summary. Measured on 2026-11-05: an approved two-file performance fix in the main session was preempted by a production incident, lived only in the conversation, and two compactions dropped it; the files sat uncommitted for a day with nobody to finish them.

@@ -325,3 +325,41 @@ def test_worktree_whose_commit_is_given_by_sha_goes(env, remote):
     sha = commit(wt, "b.txt", "b\n")
     out = env.run("--checkout", str(repo), "--sha", sha[:9])
     assert not wt.exists(), out
+
+
+def _pick_with_a_resolved_conflict(repo, sha, tmp_path):
+    """The coordinator's stack: the front's commit picked onto a newer tip, its file resolved by hand (the patch
+    changes, the subject and the author's date stay), and pushed."""
+    gate = tmp_path / "gate"
+    git(repo, "worktree", "add", "-q", "--detach", str(gate), "origin/main")
+    commit(gate, "c.txt", "c\n", msg="upstream moved")
+    git(gate, "cherry-pick", "-n", sha)
+    (gate / "b.txt").write_text("b, resolved\n")
+    git(gate, "add", "b.txt")
+    git(gate, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-C", sha)
+    git(gate, "push", "-q", "origin", "HEAD:main")
+    git(repo, "worktree", "remove", "--force", str(gate))
+
+
+def test_worktree_whose_commit_was_picked_with_a_resolved_conflict_goes(env, remote, tmp_path):
+    repo, wt = remote
+    sha = commit(wt, "b.txt", "b\n", msg="feat: the front's change")
+    _pick_with_a_resolved_conflict(repo, sha, tmp_path)
+    assert git(wt, "cherry", "origin/main", "HEAD").stdout.startswith("+ "), "the patch must differ for this case"
+    out = env.run("--checkout", str(repo))
+    assert not wt.exists(), out
+
+
+def test_a_commit_of_the_same_subject_by_another_date_is_not_taken_for_it(env, remote, tmp_path):
+    repo, wt = remote
+    commit(wt, "b.txt", "b\n", msg="fix: same words")
+    gate = tmp_path / "gate"
+    git(repo, "worktree", "add", "-q", "--detach", str(gate), "origin/main")
+    (gate / "d.txt").write_text("d\n")
+    git(gate, "add", "d.txt")
+    subprocess.run(["git", "-C", str(gate), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m",
+                    "fix: same words"], env={**os.environ, "GIT_AUTHOR_DATE": "2001-01-01T00:00:00"}, check=True)
+    git(gate, "push", "-q", "origin", "HEAD:main")
+    git(repo, "worktree", "remove", "--force", str(gate))
+    out = env.run("--checkout", str(repo))
+    assert wt.exists() and "no remote branch" in out
