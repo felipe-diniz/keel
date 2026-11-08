@@ -8,6 +8,8 @@ transcript, and prints one line:
 - `resumed <name>`: a background front stopped by the usage limit, whose reset has passed and that the open state
   still cites, was resumed here with `claude --bg --resume` and the lean profile.
 - `wake <name>`: a live front is blocked by a limit that has already reset; the coordinator sends it a message.
+- `asks <name>`: a live front is stopped on a permission request that only the owner sees; the coordinator reads the
+  request in `claude logs <name>` and unblocks it the same turn (runs the command itself or takes it to the owner).
 - `waiting <name> until <time>`: a front cut by the limit, before its reset.
 - `self`: the coordinator's own previous turn ended in a limit error; it resumes the interrupted step.
 
@@ -146,6 +148,16 @@ def previous_turn_cut(path):
     return False
 
 
+def asks_permission(jobs_root, e):
+    """The background job waits on a permission request: its job state says `tempo: blocked` while it works."""
+    try:
+        with open(os.path.join(jobs_root, str(e.get("id") or ""), "state.json")) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return False
+    return isinstance(data, dict) and data.get("tempo") == "blocked" and data.get("state") == "working"
+
+
 def is_live(e):
     return e.get("state") not in DEAD and ("pid" in e or e.get("status") in ("busy", "idle"))
 
@@ -156,7 +168,7 @@ def hhmm(epoch):
 
 def plan(agents, args, text, memo, now):
     """The tick's decisions, without side effects."""
-    live, waiting, wake, resume, self_cut = [], [], [], [], False
+    live, waiting, wake, resume, asks, self_cut = [], [], [], [], [], False
     groups = {}
     for e in agents:
         name = e.get("name")
@@ -188,6 +200,8 @@ def plan(agents, args, text, memo, now):
                 gap = RETRY_BILLING if kind == "billing" else RETRY_LIMIT
                 if now - memo.get(name, 0) >= gap:
                     wake.append(name)
+            elif asks_permission(args.jobs_root, newest):
+                asks.append(name)
             live.append(name)
             continue
         if newest.get("state") not in ("stopped", "failed") or not stop or not cited(name, text) or not recent:
@@ -201,7 +215,7 @@ def plan(agents, args, text, memo, now):
             resume.append((name, newest))
         else:
             waiting.append((name, memo[name] + gap))
-    return live, waiting, wake, resume, self_cut
+    return live, waiting, wake, resume, asks, self_cut
 
 
 def launch(args, name, entry):
@@ -242,6 +256,7 @@ def run(argv):
     p.add_argument("--dry-run", action="store_true", help="list only: no launch, no state written")
     p.add_argument("--agents-file", help=argparse.SUPPRESS)
     p.add_argument("--projects-root", default=os.path.expanduser("~/.claude/projects"), help=argparse.SUPPRESS)
+    p.add_argument("--jobs-root", default=os.path.expanduser("~/.claude/jobs"), help=argparse.SUPPRESS)
     p.add_argument("--now", type=float, default=None, help=argparse.SUPPRESS)
     args = p.parse_args(argv)
     args.checkout = os.path.abspath(os.path.expanduser(args.checkout)).rstrip("/")
@@ -253,7 +268,7 @@ def run(argv):
     if agents is None:
         return "keel tick: agents list unreadable; keep the cron and check `claude agents --json`"
     memo = load_memo(args.state)
-    live, waiting, wake, resume, self_cut = plan(agents, args, open_state(args.state), memo, now)
+    live, waiting, wake, resume, asks, self_cut = plan(agents, args, open_state(args.state), memo, now)
 
     parts, resumed = [], []
     if live:
@@ -270,6 +285,8 @@ def run(argv):
         if not args.dry_run:
             memo[name] = now
         parts.append(f"wake {name}")
+    for name in asks:
+        parts.append(f"asks {name}")
     for name, until in waiting:
         parts.append(f"waiting {name} until {hhmm(until)}")
     if self_cut:

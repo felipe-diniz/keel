@@ -23,7 +23,7 @@ When it launches the first front (and after a `/clear` or a relay, with a front 
 prompt, every `<...>` replaced by the literal value:
 
 ```text
-keel tick: run `python3 <SKILL_DIR>/../../scripts/coordination-tick.py --self <COORDINATOR-NAME> --checkout <CHECKOUT> --state <D>` (if that path is gone after an update, the newest ~/.claude/plugins/cache/*/keel/*/scripts/coordination-tick.py). By its one line: "stop" -> CronList and CronDelete this tick; "wake <name>" -> SendMessage <name> "the usage limit has reset; continue the interrupted step"; "self" -> continue your interrupted step from handoff/coordinator.md; otherwise reply only "ok". No other tool call.
+keel tick: run `python3 <SKILL_DIR>/../../scripts/coordination-tick.py --self <COORDINATOR-NAME> --checkout <CHECKOUT> --state <D>` (if that path is gone after an update, the newest ~/.claude/plugins/cache/*/keel/*/scripts/coordination-tick.py). By its one line: "stop" -> CronList and CronDelete this tick; "wake <name>" -> SendMessage <name> "the usage limit has reset; continue the interrupted step"; "asks <name>" -> read the request in `claude logs <name>`, run it yourself if it is safe and within the front's scope (then SendMessage <name> that it is done) or tell the owner to answer it; "self" -> continue your interrupted step from handoff/coordinator.md; otherwise reply only "ok". No other tool call.
 ```
 
 Use 30 minutes, not 50 or 60: cron cannot express a 50-minute period, a 60-minute gap leaves no margin over the TTL,
@@ -41,6 +41,7 @@ sessions of the same name, the newest wins.
 |---|---|---|
 | live, not cut | `N live (names)` | nobody: "ok" |
 | live, `blocked`, last turn a limit error whose reset passed | `wake <name>` (at most every 30 min) | the coordinator, by `SendMessage` |
+| live, waiting on a permission request (its job state `~/.claude/jobs/<id>/state.json` says `tempo: blocked` while `working`) | `asks <name>`, every tick while it waits | the coordinator, the same turn: reads the request in `claude logs <name>`, runs it itself when safe and in scope and tells the front, or takes it to the owner (`attach`) |
 | stopped or failed, last turn a limit error whose reset passed, still cited in the open state | `resumed <name>` (at most every 30 min) | the script: `claude --bg --resume <sessionId> -n <name>` with the lean profile, `--add-dir <D>` and a prompt pointing to its HANDOFF |
 | cut, reset still ahead | `waiting <name> until HH:MM` | nobody: the tick goes on |
 | cut by a billing error (no reset time) | `resumed`/`wake`, at most every 2 h | as above |
@@ -70,8 +71,9 @@ close (§3) takes it out.
   `apiErrorParams.rate_limit_info.resetsAt` (epoch seconds; `rateLimitType` five_hour or seven_day). A billing cut is
   `error: "billing_error"`, status 400, with no reset time. The background job ends as `blocked`, `stopped` or
   `failed` and does not retry.
-- **Inferred, not reproduced:** that a live session waiting at the limit shows `state: blocked` like a permission
-  wait (the transcript tail tells them apart), that a message wakes it, and that `--bg --resume` after the reset
+- **Measured on 2026-11-08:** a background session waiting on a permission request stays `state: working` in
+  `agents --json`; only its job state (`~/.claude/jobs/<id>/state.json`) shows `tempo: blocked`.
+- **Inferred, not reproduced:** that a live session waiting at the limit shows `state: blocked`, that a message wakes it, and that `--bg --resume` after the reset
   continues the step as it does after any stop.
 
 ## Limits

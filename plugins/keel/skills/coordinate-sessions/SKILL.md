@@ -64,8 +64,9 @@ git -C "$CHECKOUT" worktree add --detach "$CHECKOUT/.claude/worktrees/<name>" <r
 "$C" --bg --resume <full sessionId> -n <name> --settings "$P" --add-dir "$D" --permission-mode auto "<what changed and the next step>"
 ```
 
-- **Each front in its own worktree**, launched from inside it; the checkout only moves by fast-forward. Details (lean
-  profile, inherited model and effort, `NX_*`, resume copies, the full sessionId): [references/launch.md](references/launch.md).
+- **Each front in its own worktree**, born ready (deps hardlinked), launched from inside it;
+  the checkout only moves by fast-forward. Details (lean profile, inherited model and effort, `NX_*`, resume copies, the
+  full sessionId): [references/launch.md](references/launch.md).
 - **Name:** `<profile prefix>-<front>[-phase<n>]`, the same in the prompt, in `window.md` and in the report.
 - **Talking:** `SendMessage` to the NAME. A message wakes the session and rereads its whole context: send only
   resource, decision and resume. Progress goes to the HANDOFF.

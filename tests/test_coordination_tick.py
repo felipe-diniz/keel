@@ -74,7 +74,7 @@ def env(tmp_path):
             agents_file.write_text(json.dumps(agents))
         argv = ["--self", "coord", "--checkout", CHECKOUT, "--state", str(d), "--claude", str(fake),
                 "--agents-file", str(agents_file), "--projects-root", str(tmp_path / "projects"),
-                "--now", str(now), "--settings", "/lean.json", *extra]
+                "--now", str(now), "--settings", "/lean.json", "--jobs-root", str(tmp_path / "jobs"), *extra]
         return tick.run(argv)
 
     def launches():
@@ -82,7 +82,12 @@ def env(tmp_path):
             return []
         return [json.loads(x) for x in calls.read_text().splitlines()]
 
-    e.transcript, e.run, e.launches = transcript, run, launches
+    def job(sid, state, tempo):
+        folder = tmp_path / "jobs" / sid[:8]
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "state.json").write_text(json.dumps({"state": state, "tempo": tempo}))
+
+    e.transcript, e.run, e.launches, e.job = transcript, run, launches, job
     return e
 
 
@@ -184,6 +189,29 @@ def test_live_front_blocked_for_permission_is_live(env):
     env.transcript("f-1", [ok_entry("asking")])
     out = env.run([agent("pfx-a", "f-1", "blocked")])
     assert "1 live (pfx-a)" in out and "wake" not in out
+
+
+def test_live_front_waiting_on_a_permission_request_is_reported(env):
+    env.transcript("front-01", [ok_entry("running a command")])
+    env.job("front-01", "working", "blocked")
+    out = env.run([agent("pfx-a", "front-01", "working")])
+    assert "1 live (pfx-a)" in out and "asks pfx-a" in out
+    assert "wake" not in out and "stop" not in out
+    assert env.launches() == []
+
+
+def test_live_front_working_without_a_request_is_not_reported(env):
+    env.transcript("front-02", [ok_entry()])
+    env.job("front-02", "working", "active")
+    out = env.run([agent("pfx-b", "front-02", "working")])
+    assert "asks" not in out and "1 live (pfx-b)" in out
+
+
+def test_idle_front_is_not_reported_as_asking(env):
+    env.transcript("front-03", [ok_entry()])
+    env.job("front-03", "done", "blocked")
+    out = env.run([agent("pfx-c", "front-03", "done", live=False)])
+    assert "asks" not in out
 
 
 def test_billing_error_retries_every_two_hours(env):

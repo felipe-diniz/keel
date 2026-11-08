@@ -30,6 +30,15 @@ before changing the launch command.
   pass `--worktree <path>`. Keep `"worktree": {"bgIsolation": "none"}` in the settings: with it Claude Code does not
   make a second worktree of its own, on a new branch from the checkout's possibly stale HEAD. `.claude/worktrees/` goes
   in the project's `.gitignore`. A session that asks "Call EnterWorktree first": the key is gone; take it to the owner.
+- **The worktree is born ready: the front never touches its dependencies.** The coordinator prepares it completely
+  before the launch. Dependencies go in as a HARDLINK copy of the checkout's install (`cp -al "$CHECKOUT/node_modules"
+  <worktree>/node_modules`: seconds, no new space; the package manager's internal links are relative and stay inside the
+  copy), never as a symlink: a bundler (Next/Turbopack) refuses a `node_modules` that links outside the project root,
+  and a front that swaps it mid-way runs `rm` and `cp` on a dependency tree, which auto mode stops on a permission
+  request that only the owner sees, with nobody told (2026-11-08: a release front sat there while the owner waited for
+  the deploy). Generated files (an ORM client, codegen) are generated INSIDE the worktree. The front does not reinstall,
+  swap or restore any of it, not even at its close: `--close` removes the worktree, and removing the hardlinks only
+  unlinks them. A front that finds something missing asks the coordinator, which prepares it.
 - **The checkout belongs to the owner and the coordinator.** No front writes there; the coordinator's own short fixes
   go by a worktree too when the checkout is not clean. After each push the clean checkout is fast-forwarded
   (`git merge --ff-only <remote>/<branch>`; `--close` does it), so it never drifts behind.

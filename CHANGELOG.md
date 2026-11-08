@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.6.5 — 2026-11-08
+
+- **The front's worktree is born ready, and the front never touches its dependencies.** The coordinator puts the dependencies in as a hardlink copy of the checkout's install (`cp -al`), never a symlink, and generates the generated files inside the worktree before the launch; the footer forbids the front to delete, reinstall or swap them. Measured on 2026-11-08: a front born with `node_modules` symlinked had to swap it for its production build, auto mode stopped the `rm` + `cp` on a permission request only the owner saw, and the release it was finishing sat waiting with nobody told. The profile template gains a "Worktree prep" line.
+- **The tick reports a front stuck on a permission request.** `asks <name>` when a live front's job state (`~/.claude/jobs/<id>/state.json`) says `tempo: blocked` while it works; `agents --json` keeps it as `working`, so before this nothing saw it. The coordinator reads the request in `claude logs <name>` and unblocks it the same turn, or takes it to the owner.
+
 ## 3.6.4 — 2026-11-06
 
 - **The close takes out a worktree whose commit was picked with a resolved conflict.** The coordinator stacks each front's commits on the upstream and, when a shared generated file conflicts (an index), resolves it by hand: the patch changes and `git cherry` no longer sees the commit upstream, so the close left the worktree and reported it as unintegrated. The close now also matches a commit by subject, author email and author date, which a cherry-pick keeps; a commit that only shares the subject has another author date and still holds its worktree. Measured on 2026-11-06: fourteen worktrees of finished fronts, 64 GB, every commit on the upstream under another sha.
