@@ -1,6 +1,6 @@
 # keel
 
-A [Claude Code](https://code.claude.com) plugin that ships a ready-made working method: four agents, a single pre-commit review gate, a skill for running several fronts in parallel as background sessions, a skill for building public sites, and per-developer versioned project memory. The main session thinks and decides. Wide reading, isolated writing and web research run outside it, in separate contexts.
+A [Claude Code](https://code.claude.com) plugin that ships a ready-made working method: four agents, a single pre-commit review gate, a skill for running several fronts in parallel as background sessions, web skills (public sites, product screens, the modern web platform, SEO), an LGPD skill that teaches the law and hunts personal-data leaks in code, and per-developer versioned project memory. The main session thinks and decides. Wide reading, isolated writing and web research run outside it, in separate contexts.
 
 Install it and start working. There is no setup step.
 
@@ -67,7 +67,11 @@ Install it and start working. There is no setup step.
 | Hook | memory secret guard | Refuses a Write or Edit into memory that contains a credential. |
 | Output style | `keel:direct` | Proactive outside critical risk and business rules. Starts with the result, no preamble. A user decision becomes a question with the recommended option first. Comes on with the plugin ([direct.md](plugins/keel/output-styles/direct.md)). |
 | Skill | `/keel:coordinate-sessions` | Coordinates fronts in `claude --bg` sessions. |
-| Skill | `/keel:web-craft` | Public sites and landing pages: design that does not look generic and keeps the brand, motion with GSAP, ScrollTrigger and Lenis plus a Three.js scene delivered by default on a new site or redesign (ready recipe in `stack.md`), ideas brought unasked and a share-ready link (`proactive.md`), SEO and AI search, copy, Core Web Vitals and verification on the rendered page. A short core and one reference per topic, read on demand. A project's own design or SEO skill wins where it is more specific. |
+| Skill | `/keel:web-craft` | Public sites and landing pages: design that does not look generic and keeps the brand, motion with GSAP, ScrollTrigger and Lenis plus a Three.js scene delivered by default on a new site or redesign (ready recipe in `stack.md`), ideas brought unasked and a share-ready link (`proactive.md`), marketing copy, Core Web Vitals (the thresholds every skill links to) and verification on the rendered page. A project's own design or frontend skill wins where it is more specific. |
+| Skill | `/keel:product-ui` | Screens of a product or app: type, spacing and radius scales, color as signal, buttons, fields, modals, tables and status badges, work screens, the casual-user ruler, interface copy and the UI audit rubric. Defaults for a project without a design system; the project's own wins. |
+| Skill | `/keel:web-platform` | The modern web platform for any screen: Baseline as the support policy, forms and autofill, accessibility, INP and navigation (bfcache, Speculation Rules, view transitions), dialog, popover and anchor positioning, modern CSS, Temporal and time zones, client security (CSP, Trusted Types, SRI, sanitizing, passkeys), each mapped to Next.js App Router and React 19, plus React Compiler and react-hook-form pitfalls. Support claims checked on webstatus.dev with the date. |
+| Skill | `/keel:seo` | SEO and AI search of a public site: crawl and indexing, canonical, hreflang, sitemap and robots, structured data with the retired types, AI crawlers and `llms.txt`, E-E-A-T and YMYL health content, images and social cards, and the audit rubric. |
+| Skill | `/keel:lgpd` | Brazil's LGPD, two modes. Teach: legal bases (arts. 7 and 11), health data, data subject rights, controller vs processor in a multi-tenant SaaS, retention, anonymization, international transfer, incident deadlines of Res. CD/ANPD 15/2024, records and RIPD, with the article for each claim and "to validate" for what is counsel's. Hunt: a procedure with grep signals, severity and fix for personal data in logs, alerts, APM and analytics, cross-tenant access, plain-text sensitive fields, exports, missing purge, consent, debug routes and secrets. It does not replace the encarregado (DPO) or counsel. |
 | Skill | `/keel:showcase` | Marketing and release-note media from the project's real screens with seed data: vertical Reel 1080x1920, landscape release video 1920x1080 with WebVTT, post art, carousel and covers, kinetic or word-timed captions, optional ElevenLabs narration and music (a music file works without a key), and the copy method for social posts and release notes with the WhatsApp message. Configured per project in `.claude/showcase.json`; the owner publishes. |
 | Command | `/keel:migrate` | Removes an old manual install and the plugin under its old name (see below). |
 | Command | `/keel:auto-update` | Turns keel's background auto-update on or off, or shows where it stands. A hook turns it on at the first session after the install. |
@@ -300,7 +304,7 @@ Uninstalling leaves the memory links in place, so auto memory keeps writing to `
 - Claude Code's built-in `Explore` still exists: a plugin agent gets a prefix and does not replace the built-in. The rules tell the session to use `keel:explore`.
 - The rules enter the main session's context through a hook. Subagents have their own prompt and do not receive these rules; they read the project's `CLAUDE.md`, except `explore` and `research`.
 - The `keel:direct` style overrides the user's `outputStyle` while the plugin is enabled (`force-for-plugin`). It applies to the main session; subagents have their own prompt.
-- `rules.md` must fit in 10,000 characters, the hook output limit, with room for the migration notice. `tests/test_sizes.py` pins it, the skill cores, the footer and the references.
+- `rules.md` must fit in 10,000 characters, the hook output limit, with room for the migration notice. `tests/test_sizes.py` pins it, the skill cores, the footer and the references, and checks every relative link between references and across skills.
 - A plugin agent ignores `hooks:` in its frontmatter. That is why the gate's Bash guard is a plugin hook that filters on the payload's `agent_type`.
 - The secret guard sees only Write and Edit. A memory written through Bash is not inspected.
 - The memory link relies on symlinks. On Windows without symlink permission, `/keel:memory` falls back to `autoMemoryDirectory`; the hook does not, and only suggests the command.
@@ -322,7 +326,11 @@ plugins/keel/
     migrate.py                        /keel:migrate
   rules.md                            what goes into context at session start
   skills/coordinate-sessions/         skill, templates and references
-  skills/web-craft/                   public-site skill: core and references (stack, proactive, design, copy, motion, three, seo, performance, verification)
+  skills/web-craft/                   public-site skill: core and references (stack, proactive, design, copy, motion, three, performance, verification)
+  skills/product-ui/                  product-screen skill: core and references (foundations, components, tables, screens, copy, audit)
+  skills/web-platform/                web-platform skill: core and references (baseline, forms, accessibility, ui-primitives, performance, security, dates, next-react, react-pitfalls)
+  skills/seo/                         SEO skill: core and references (crawl-index, structured-data, ai-search, eeat, images-social, audit)
+  skills/lgpd/                        LGPD skill: core and references (law, lifecycle, incident, hunt-logs, hunt-isolation, hunt-storage)
   skills/showcase/                    media skill: core, references (setup, config, capture, storyboard, audio, social-post, release-notes) and scripts (doctor, capture, compose, audio, art)
   output-styles/direct.md             response style
   commands/migrate.md                 /keel:migrate

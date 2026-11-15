@@ -1,12 +1,12 @@
 {
   "name": "keel",
-  "version": "3.6.5",
-  "description": "Read, write, test, research and review agents, a single pre-commit gate only for critical risk, agent memory versioned per developer, workstreams coordinated in background sessions, a public-site skill (design, motion, Three.js, SEO), and a media skill for Reels, release videos, post art and their copy. Install it and it works.",
+  "version": "3.7.0",
+  "description": "Read, write, test, research and review agents, a single pre-commit gate only for critical risk, agent memory versioned per developer, workstreams coordinated in background sessions, web skills (public-site design, motion and Three.js; product UI; the modern web platform mapped to Next.js and React; SEO and AI search), an LGPD skill that teaches the law and hunts personal-data leaks in code, and a media skill for Reels, release videos, post art and their copy. Install it and it works.",
   "author": {
     "name": "Felipe Diniz"
   },
   "homepage": "https://github.com/felipe-diniz/keel",
   "repository": "https://github.com/felipe-diniz/keel",
   "license": "MIT",
-  "keywords": ["agents", "code-review", "pre-commit", "memory", "background-sessions", "workflow", "web-design", "seo", "gsap", "threejs"]
+  "keywords": ["agents", "code-review", "pre-commit", "memory", "background-sessions", "workflow", "web-design", "seo", "gsap", "threejs", "web-platform", "accessibility", "product-ui", "lgpd", "privacy"]
 }

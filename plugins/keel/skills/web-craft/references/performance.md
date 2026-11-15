@@ -1,17 +1,17 @@
 # Performance for marketing sites
 
-Read when you add or change a hero, image, font, script, animation or 3D scene on a public page, or when LCP, INP or CLS regress.
+Read when you add or change a hero, image, font, script, animation or 3D scene on a public page, or when LCP, INP or CLS regress. This file holds the Core Web Vitals thresholds and the lab method for every keel skill; interaction work (long tasks, yielding, bfcache, prefetch) is in web-platform's [performance.md](../../web-platform/references/performance.md).
 
-## Budgets and thresholds (checked 2026-10)
+## Budgets and thresholds (checked 2026-11-15)
 
-| Metric | Good | Notes |
-|---|---|---|
-| LCP | 2.5 s or less | Needs improvement 2.5 to 4.0 s; poor over 4.0 s |
-| INP | 200 ms or less | Replaced FID in March 2024 |
-| CLS | 0.1 or less | |
+| Metric | Good | Poor | Notes |
+|---|---|---|---|
+| LCP | 2.5 s or less | over 4.0 s | |
+| INP | 200 ms or less | over 500 ms | Replaced FID in March 2024 |
+| CLS | 0.1 or less | over 0.25 | |
+| TBT (lab) | 200 ms or less | over 600 ms | Lab proxy for INP; Lighthouse does not measure INP |
 
 - A page passes only if all three are good at the 75th percentile of page loads, split by mobile and desktop.
-- The sources did not confirm INP and CLS "poor" cutoffs in text.
 - Google recommends good Core Web Vitals and states no ranking weight.
 - Googlebot fetches only the first 2 MB of an HTML file (uncompressed) and has the same limit per subresource. Content past it is ignored.
 - A new section must not worsen median LCP against baseline, push CLS above 0.1, or put new JS on the critical path.
@@ -39,14 +39,17 @@ Read when you add or change a hero, image, font, script, animation or 3D scene o
 - The hero screenshot is usually the LCP element.
 - Formats: AVIF with WebP fallback. Google Images indexes AVIF, WebP, JPEG, PNG, GIF, BMP and SVG.
 - Serve a variant per width with the box's aspect ratio.
-- LCP image: `fetchpriority="high"`, never lazy.
+- LCP image: `fetchpriority="high"`, never lazy, with `width` and `height` (or a fixed aspect box). More than one or two high-priority images cancel the effect.
 - Below the fold: `loading="lazy"`. An image under `display:none` is not downloaded.
 - Responsive backgrounds: `image-set()` with `type('image/avif')` and `type('image/webp')` entries at 1x and 2x, in a CSS custom property per theme. Add `role="img"` and a label.
 - Google indexes `<img>` (also inside `<picture>`), not CSS images. If the image must be indexed, use `<img>` or `<picture>`.
 - Preload per theme and breakpoint with literal tags: `<link rel="preload" as="image" type="image/avif" imagesrcset="... 1x, ... 2x" media="(min-width:768px) and (prefers-color-scheme:dark)" fetchpriority="high">`.
 - One link per breakpoint x theme; the `media` attribute makes the browser fetch only the match. A single unconditioned preload cost 3.8 s of LCP in a lab test, because the other theme downloaded too.
-- Do not preload a below-the-fold phone image. An 86 KB high-priority preload stole bandwidth from CSS and fonts on 4G.
-- Emit preload as a literal `<link>` in served HTML; verify it appears in the page source, not only in a framework hint.
+- Do not preload a below-the-fold phone image. An 86 KB high-priority preload stole bandwidth from CSS and fonts on 4G. When the phone hero IS the LCP element, preload that variant in the `<head>` (or ship it as `<img fetchpriority="high">`): a CSS background found only after the stylesheet gave a 4.6 s mobile LCP in one audit.
+- Emit preload as a literal `<link>` in served HTML; verify it appears in the page source, not only in a framework hint. With streaming and a layout that reads cookies, a preload rendered by the page lands in the body after the head was sent: put it in the root layout's head and assert it comes before `</head>` in an end-to-end test of the served HTML.
+- `sizes` subtracts the container padding (`calc(100vw - 48px)` inside 24px gutters); with `100vw` a 412 px phone fetched the 1200 px variant.
+- A landscape image in a portrait box with `object-fit: cover` makes the browser rasterize about 3x the area: ship a variant in the box's aspect ratio.
+- Images from a CMS are requested with format and width parameters from its image CDN, with `srcset`; a raw JPEG gave a 5.0 s mobile LCP.
 - A visitor whose stored theme differs from the device theme loads the correct variant through CSS without preload.
 - CSS-only theme switching fetches only the matching variant and runs no JS. A client component that swaps the image on mount causes a flash on the LCP element and a second download.
 - Version the filename when a screenshot changes.
@@ -91,7 +94,11 @@ Read when you add or change a hero, image, font, script, animation or 3D scene o
 - Lighthouse cannot measure INP; it uses TBT as a proxy.
 - Lab protocol: 3 or more runs, at 390 and 1440 wide, same machine, CPU 4x throttle, before and after; compare medians. Interleave A/B runs.
 - In the page, use `PerformanceObserver` for `largest-contentful-paint`, `layout-shift` and `longtask`.
-- Measure the production build.
+- Measure the production build; a dev server also rewrites `Cache-Control`, so headers are checked on the production server.
+- Split LCP into TTFB, resource load delay, load duration and render delay; a long render delay with a short download is rasterization or render blocking, not network.
+- PageSpeed Insights varies between runs and against local Lighthouse: decide on the median of 3 runs and the LCP breakdown. A cold CDN edge (`MISS` on the first request) skews it: warm it first.
+- A local server without compression inflates lab LCP: put a compressing proxy in front, and compare before and after in the same setup.
+- A bot-detection script injected by a CDN into every page can cost hundreds of ms of main thread on phones: weigh it against speed.
 - Measure at the first gesture too: a long task there is an INP risk.
 
 ## Anti-patterns
@@ -110,4 +117,4 @@ Read when you add or change a hero, image, font, script, animation or 3D scene o
 
 ## Sources
 
-Core Web Vitals and image facts come from web.dev and Google Search documentation (checked 2026-10). Budget, hero and WebGL rules come from observed practice on a production marketing site, generalized.
+Core Web Vitals and image facts come from web.dev (https://web.dev/articles/defining-core-web-vitals-thresholds) and Google Search documentation (checked 2026-11-15). Budget, hero and WebGL rules come from observed practice on a production marketing site, generalized.

@@ -1,6 +1,6 @@
 ---
 name: web-craft
-description: Public website, landing page or hero — design that does not look generic and keeps the brand, GSAP/ScrollTrigger/Lenis motion and a Three.js scene delivered by default on a new site or redesign, SEO and AI search, copy, Core Web Vitals, verification on the rendered page. Use when creating, redesigning, modernizing, changing or auditing a public page, its motion, 3D scene, metadata, structured data or marketing text. A project's own design, SEO or frontend skill wins where it is more specific.
+description: Public website, landing page or hero — non-generic design that keeps the brand, GSAP/ScrollTrigger/Lenis motion and a Three.js scene delivered by default on a new site or redesign, marketing copy, Core Web Vitals, verification on the rendered page. Use when creating, redesigning, modernizing, changing or auditing a public page, its motion, 3D scene or marketing text. SEO: seo skill; app screens: product-ui; platform APIs: web-platform. A project's own design or frontend skill wins where it is more specific.
 ---
 
 # Web craft
@@ -43,10 +43,12 @@ one line.
 ## The flow
 
 1. **Read the surface.** Purpose of the page, audience, the one action it asks for, the current site rendered (screens)
-   and its brand tokens, and the project's own skills. A project skill for design, SEO or frontend wins over this one where it is more specific.
+   and its brand tokens, and the project's own skills. A project skill for design or frontend wins over this one where
+   it is more specific.
 2. **Compose the static page.** Hierarchy, type, sections, imagery and copy ([design](references/design.md),
-   [copy](references/copy.md)). Metadata, canonical, `lang`, structured data and the social image
-   ([seo](references/seo.md)).
+   [copy](references/copy.md)). Metadata, canonical, `lang`, structured data and the social image by the `seo` skill
+   ([SKILL.md](../seo/SKILL.md)); forms, dialogs and platform features by `web-platform`
+   ([SKILL.md](../web-platform/SKILL.md)).
 3. **Plan the acts.** One act per section from the catalog, at least 4 families, and the hero scene concept
    ([stack](references/stack.md)).
 4. **Build the layers behind the gate**: boot, engine, scene, teardown, tests of the gate and of the CSS contract
@@ -61,13 +63,12 @@ one line.
 | File | Read when |
 |---|---|
 | [references/design.md](references/design.md) | composing or auditing layout, type, color, sections, hero or imagery, or the page looks generic |
-| [references/copy.md](references/copy.md) | writing or reviewing a headline, subhead, call to action, section text or microcopy |
+| [references/copy.md](references/copy.md) | writing or reviewing a headline, subhead, call to action or section text (interface microcopy: product-ui) |
 | [references/proactive.md](references/proactive.md) | building or redesigning a page: ideas to bring unasked, the share-ready delivery, the layout probe |
 | [references/stack.md](references/stack.md) | building or redesigning a page: default delivery, files, markup contract, act per section, hero scene, delivery check |
 | [references/motion.md](references/motion.md) | adding or reviewing GSAP, ScrollTrigger, SplitText, Lenis or CSS scroll-driven motion, its gate or its teardown |
 | [references/three.md](references/three.md) | adding or reviewing a Three.js/WebGL scene, its capability probe, render loop or disposal |
-| [references/seo.md](references/seo.md) | touching metadata, canonical, hreflang, structured data, sitemap, robots, social images, AI crawlers, or auditing search |
-| [references/performance.md](references/performance.md) | a page is slow, a budget is set, or an enhancement adds JavaScript, fonts, images or WebGL |
+| [references/performance.md](references/performance.md) | a page is slow, a budget is set, an enhancement adds JavaScript, fonts, images or WebGL; the Core Web Vitals thresholds for every skill |
 | [references/verification.md](references/verification.md) | declaring a page done, capturing screens, checking accessibility, or reporting a visual review |
 
 ## What fails a review
@@ -81,5 +82,4 @@ one line.
 - `devicePixelRatio` passed raw to the renderer, or the render loop runs off screen.
 - Text that names no product, audience or proof; adjectives where a number or a case should be.
 - An image that must be found by search shipped as a CSS background.
-- Rich results promised for structured data types search engines no longer show.
 - "Done" without screens of the matrix.

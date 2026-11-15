@@ -1,12 +1,13 @@
 # Verification on the rendered page
 
-Read when you finish a page, section or effect and must prove it works, or when you audit a page you did not build.
+Read when you finish a page, section, effect or product screen and must prove it works, or when you audit a screen you did not build.
 
 ## Principle
 
 - Verify on the rendered page, not on the code. Unit tests cannot see cut-off text, a wrong theme, invisible focus or a small tap target.
 - Batch it: go through everything, note, fix at once, then look again.
 - A capture is for looking. No test catches a phrase cut off in a phone card.
+- The same protocol serves product screens ([product-ui](../../product-ui/SKILL.md)); there the states and touch rows weigh most.
 
 ## Matrix
 
@@ -30,6 +31,7 @@ Read when you finish a page, section or effect and must prove it works, or when 
 - Use Playwright or similar. Do not install anything the project lacks; ask first.
 - Per screen x width x theme, record: full-page screenshot, horizontal scroll, smallest touch target, clipped text, button count, axe violations.
 - Axe: inject the source with `page.addScriptTag({ content })` and run `axe.run` with tags `wcag2a`, `wcag2aa`, `wcag21aa`.
+- Run axe on a still screen: wait for a control and for the end of the entrance animation. Mid-animation it measures half-opacity text and reports contrast that does not exist (1.01:1).
 - Emulate: `colorScheme`, `reducedMotion`, viewport, device scale factor.
 - Block WebGL via launch args or by stubbing `getContext` to return `null`.
 - Throttle CPU and network through the browser's CDP session.
@@ -38,6 +40,7 @@ Read when you finish a page, section or effect and must prove it works, or when 
 - Put outputs outside the repo and out of the public folder, in a dated directory.
 - Measure the production build, not the dev server. Dev compiles on demand and lies about cache headers.
 - A local server with compression off gives sizes that are not production.
+- A third-party widget (captcha) with an empty site key can hang the flow in a local build, a login born waiting for it. Set a test key or stub the widget.
 - Normalize non-breaking spaces before comparing text.
 - Role queries do not find content under `visibility:hidden`.
 

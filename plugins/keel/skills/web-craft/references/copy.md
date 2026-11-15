@@ -69,21 +69,11 @@ One occurrence calls for a rewrite.
 
 ## Microcopy
 
-- Button: action plus object ("Save note"). Confirm with the same verb ("Note saved"). One concept, one name through the flow.
-- Error: what failed, why (if known and useful), how to proceed. No internal code as the main sentence, no apology.
-- Empty state: say which kind (first use, no result, filter, no permission, failure). One line.
-- Destructive action: name the object and consequence; the button repeats the action. Never "Yes" or "OK". Prefer undo when safe.
-- Loading: name the operation. Progress bar only if progress exists.
-- Forms: fixed label (the placeholder is only an example); state the required format before submit; the error sits beside the field and says how to fix it, without blame.
-- Subtitle only if it informs.
-- Toggle helper: open with the current state, say the effect and what the other position does.
-- Sensitive data stays out of toasts, push, email subjects and previews. Access denied does not confirm a record exists.
+- Interface text (buttons, forms, errors, empty states, confirmations) on public pages too: [product-ui copy.md](../../product-ui/references/copy.md).
 
 ## Localization
 
-- One whole sentence per key. Never concatenate fragments.
-- Variables as `{name}`. Do not build plurals or word order by hand.
-- Leave room for the longest language to grow, and test that locale at every width.
+- Whole sentences per key, variables, plural keys and room to grow: [product-ui copy.md](../../product-ui/references/copy.md) Translation.
 - The banned-signal list was written for one language and translated. Look for the equivalent patterns in each language.
 
 ## Checklist

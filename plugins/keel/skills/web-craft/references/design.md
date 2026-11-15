@@ -33,7 +33,7 @@ Read when you create, change or review the visual design of a landing page, home
 - Keep prose to about 75 characters per line. No justified text.
 - Do not skip heading levels.
 - Use `tabular-nums` for counters, prices and columns.
-- Editable fields are at least 16px on phones, or iOS Safari zooms on focus.
+- Editable fields keep the phone font floor of web-platform [forms.md](../../web-platform/references/forms.md) §Structure.
 - Check on the rendered page that the declared font actually loaded.
 
 ## Color, surfaces, theme
@@ -49,7 +49,7 @@ Read when you create, change or review the visual design of a landing page, home
 - AA in both themes: 4.5:1 normal text, 3:1 large text.
 - Elevation is a 1px border plus one luminosity step, not shadow. Shadow is for what really floats.
 - Do not dilute a border token that is already subtle.
-- Radius: one radius family. Cards 12px, buttons 6px. Pills only for chips and badges.
+- Radius: one radius family. Marketing cards 12px, buttons 6px (apps use 6px cards, see product-ui foundations). Pills only for marketing chips and seals; a row status badge in an app is a 4px framed label (product-ui tables).
 - Buttons: filled, color-only hover, no translate, no outline-only. Use `transition-colors`, never `transition-all` (it animates inherited `visibility` and flickers).
 
 ### Theme policy
@@ -59,7 +59,7 @@ Read when you create, change or review the visual design of a landing page, home
 - The server marks `<html>` from the path only. Do not read cookies or headers in cacheable routes, or the edge cache breaks.
 - A head script resolves the theme before paint. Write storage only when the visitor toggles.
 - Theme-dependent images: CSS background via variable, or two `<picture>` elements hidden by the theme class. One `<picture media>` follows the device, not the toggle.
-- Do not make one section fixed-dark inside a light page.
+- Do not make one section fixed-dark inside a light page, unless it is a recorded exception (product-ui audit.md).
 - Do not reveal a screenshot with a page-colored curtain. Reveal by transform only.
 
 ## Sections and rhythm
@@ -133,22 +133,7 @@ Read when you create, change or review the visual design of a landing page, home
 
 ## Audit rubric
 
-- An audit documents; it does not fix. Findings become work items.
-- Choose the ruler for the surface. A ruler for one surface gives false findings on another (density is a virtue in an app and a defect on a home page).
-- Score five axes 0 to 4. Scores 1 and 3 sit between anchors. Each score cites evidence (measurement, capture, file:line).
-
-| Axis | 0 | 4 |
-|---|---|---|
-| Accessibility | Fails WCAG A, no keyboard | Full AA, axe clean across widths and themes |
-| Performance | Freezes or shifts layout | Lab LCP and CLS in target |
-| Theme | Fixed colors everywhere | Both themes right, exceptions documented |
-| Responsive | Desktop only | Fluid, right targets |
-| Ruler fidelity | Systemic deviation | Coherent and intentional |
-
-- Total /20: 18-20 polish; 14-17 good; 10-13 significant work; 6-9 major overhaul; 0-5 foundation.
-- Severity: P0 blocks the task, fix now. P1 greatly hinders or violates AA, fix before publishing. P2 has a workaround, next round. P3 polish, keep few.
-- Report: surface, ruler, date, commit, environment; score table; findings by severity (location, user impact, rule, specific fix); repeating patterns; what is good; attack order; what was not verified.
-- Do not: finding without impact, generic advice ("improve contrast"), everything P0, a finding not checked on the rendered page.
+- Scoring and reporting a UI audit: [product-ui audit.md](../../product-ui/references/audit.md).
 
 ## Sources
 

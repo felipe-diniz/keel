@@ -15,6 +15,10 @@ CAPS = {
     "skills/coordinate-sessions/SKILL.md": 12_000,
     "skills/coordinate-sessions/templates/footer.md": 6_000,
     "skills/web-craft/SKILL.md": 7_000,
+    "skills/web-platform/SKILL.md": 6_000,
+    "skills/product-ui/SKILL.md": 6_000,
+    "skills/seo/SKILL.md": 6_000,
+    "skills/lgpd/SKILL.md": 6_500,
     "skills/showcase/SKILL.md": 6_000,
 }
 DESCRIPTION_CAP = 520
@@ -58,3 +62,12 @@ def test_every_reference_is_indexed_and_every_link_exists(skill):
         linked_anywhere |= {f"references/{m}" for m in re.findall(r"\(([\w.-]+\.md)\)",
                                                                   (SKILLS / skill / ref).read_text())}
     assert refs <= linked_anywhere, f"{skill}: not indexed {sorted(refs - linked_anywhere)}"
+
+
+@pytest.mark.parametrize("doc", sorted(str(p.relative_to(SKILLS)) for p in SKILLS.glob("*/**/*.md")))
+def test_every_relative_link_resolves(doc):
+    """Links between references and across skills (`../../seo/references/x.md`) point to a file that exists."""
+    path = SKILLS / doc
+    targets = re.findall(r"\]\(([^)#\s]+\.md)(?:#[^)]*)?\)", path.read_text())
+    broken = [t for t in targets if "://" not in t and not (path.parent / t).resolve().is_file()]
+    assert not broken, f"{doc}: broken links {broken}"
