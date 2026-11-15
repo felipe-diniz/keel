@@ -1,6 +1,6 @@
 # keel
 
-A [Claude Code](https://code.claude.com) plugin that ships a ready-made working method: four agents, a single pre-commit review gate, a skill for running several fronts in parallel as background sessions, web skills (public sites, product screens, the modern web platform, SEO), an LGPD skill that teaches the law and hunts personal-data leaks in code, and per-developer versioned project memory. The main session thinks and decides. Wide reading, isolated writing and web research run outside it, in separate contexts.
+A [Claude Code](https://code.claude.com) plugin that ships a ready-made working method: five agents, a single pre-commit review gate, a skill for running several fronts in parallel as background sessions, web skills (public sites, product screens, the modern web platform, SEO), an LGPD skill that teaches the law and hunts personal-data leaks in code, and per-developer versioned project memory. The main session thinks and decides. Wide reading, isolated writing and web research run outside it, in separate contexts.
 
 Install it and start working. There is no setup step.
 
@@ -94,7 +94,7 @@ claude plugin marketplace add felipe-diniz/keel
 claude plugin install keel@keel
 ```
 
-Open a new session. To check, ask "which keel: agents do you have?". All four should appear.
+Open a new session. To check, ask "which keel: agents do you have?". All five should appear.
 
 ### Coming from the manual setup
 
