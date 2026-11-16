@@ -74,6 +74,7 @@ Lenses, applied to what the diff reaches (no script by obligation):
 - Tests: the changed behavior has a test that FAILS without the change ("was created" does not count), and the project's test rule was met.
 - Docs and memory: the invariant that changed is in the risk doc or the layer's skill; a new hard rule or a trap paid for on the critical path has a destination. Point to where to record it; do not write it. Docs outside the critical path are not yours.
 - Deterministic checks the project declares (script, parity spec, grep): look up the result in `Verified` or run the cheap one. Do not reason in place of them.
+- Mutation of the T2 slice, only when the repo root has a `size-budget.json` with a `keel` key (the clean-code package): load the skill `keel:clean-code` and run its gate step once, on the T2 production files (not tests), as its core says. A survivor in a T2 function is a finding with the severity its gate rule gives; a T2 file with no test is the finding "T2 change without a test that fails when the invariant falls". Tools not ready, no sandbox, or a file not finished in the budget: one line in Scope as not measured; never install, never pass `--no-sandbox`. Without the package, skip this step.
 
 ## 6. Measure (when the project declares a verification environment and it is up)
 

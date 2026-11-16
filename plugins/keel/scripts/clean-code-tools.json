@@ -1,0 +1,52 @@
+{
+  "$comment": "Pins of the clean-code tools. Changing a SHA or a hash is the ONLY way to update a tool: an explicit, reviewed edit. Audit in skills/clean-code/references/tools.md.",
+  "python": "3.12",
+  "tools": {
+    "crapper": {"repo": "https://github.com/unclebob/crapper.git", "sha": "c757ec79a6c15dc815238bbd9c2f4601eb54d3cc", "license": "0BSD"},
+    "dryer": {"repo": "https://github.com/unclebob/dryer.git", "sha": "66ff6d21a42c04afcad89c78a80066176d1294b0", "license": "0BSD"},
+    "mutator": {"repo": "https://github.com/unclebob/mutator.git", "sha": "830ec7e9c39664d753f8699015bc796df67727b9", "license": "0BSD"}
+  },
+  "parsers": {
+    "package": "tree-sitter-language-pack",
+    "version": "1.25.2",
+    "languages": ["typescript", "tsx", "javascript", "python"],
+    "platforms": {
+      "macos-arm64": {
+        "bundle": "034fc9ea0dcd2d27d9371ea19e7d4349e064df2c9bf2b8f35ae0e6f6382e5e64",
+        "libs": {
+          "libtree_sitter_typescript.dylib": "a720e2742380580ab843a6ea602129f111fecc2ef57b09efe039e81ccd1b613d",
+          "libtree_sitter_tsx.dylib": "9c6193e1c27d79c46bb34f5f92385de317b85a19e62c7b235a17f93b5a8d17e6",
+          "libtree_sitter_javascript_orchard.dylib": "289fe5230741678facc578828ee00f9c3a7c3ce1ff669abd995ca306eaef9ccb",
+          "libtree_sitter_python.dylib": "193dc4c308f90e31ec784821294356ea9790f9bb7dcc449e5b17aa452980580a"
+        }
+      },
+      "macos-x86_64": {
+        "bundle": "cef976f4c984f5f499cc3d651da6eb8d90f3e17fb5e5a25db913077f5743ffca",
+        "libs": {
+          "libtree_sitter_typescript.dylib": "1c7d9f9b44a0c82949ba462cc898eb12d37c59c982641ba38e4d5f4ac3028bc7",
+          "libtree_sitter_tsx.dylib": "9fc7cd7008ea65807afb6211b41e97562c76540ed09b0d78ac8f7c2c9a98a163",
+          "libtree_sitter_javascript_orchard.dylib": "975d628836581c481cef0523bf13f993bfa99210f3d2f7e37ba0cfc11d92e74e",
+          "libtree_sitter_python.dylib": "dada14c4b6702db7a12ef6ed06507c761109d99d5eca81b13f387efa211f0c2c"
+        }
+      },
+      "linux-x86_64": {
+        "bundle": "edcf1bc5546f263fadfd59e648ecb06023875eee164262bb41a805e0267a0b10",
+        "libs": {
+          "libtree_sitter_typescript.so": "e14f485dcb2c126d245b478d7e98f00a64eacbd0cb58800b0dd077af681acf47",
+          "libtree_sitter_tsx.so": "9a30cced320347e037bd3436d29c3afd99665d271f263e4b50057c6baf9b3463",
+          "libtree_sitter_javascript_orchard.so": "f84a9be398f93b38f779579cd71b33edaa6df4f7dd415f929f9b156e26582fbe",
+          "libtree_sitter_python.so": "fa6228f600a193d6ca4ffc1cd2146c04ea5007342c8702992d169304106ad48f"
+        }
+      },
+      "linux-aarch64": {
+        "bundle": "255b5e1481e372060666549988cafc829a378a5b967b165e04f8266c8267efad",
+        "libs": {
+          "libtree_sitter_typescript.so": "21cbdb38125353805a01cce72e8e5dfbff06934c20eb6a9d9208fb08047a51c7",
+          "libtree_sitter_tsx.so": "806df33564c91283dcf5e23f221de1dcd657b149d5169e704f916b63e30ffe6e",
+          "libtree_sitter_javascript_orchard.so": "99a387f36e6676d25ca78eecb517efebb8ebda0540ead943b1d1e95e1d5df03b",
+          "libtree_sitter_python.so": "1a3183318363ad204fd4255b845c3b2442512e1928778fb1d26e2b680b12f180"
+        }
+      }
+    }
+  }
+}
