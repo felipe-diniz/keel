@@ -3,6 +3,7 @@
 ## 3.8.1 — 2026-11-16
 
 - **`clean-code-measure.py` fixes found on first real use.** `--help` prints the usage instead of measuring a file named `--help`; an unknown option stops with its name; `crap` creates `.metrics/keel/coverage` on a fresh project instead of crashing; `dry` with no supported file reports no pairs instead of crashing on the missing snapshot.
+- **The proposed ESLint block matches each budget path literally.** A file under a Next route folder like `[slug]` had its ceiling read as a glob character class, so the per-file override never matched and lint failed at the 1,000 default. The block now escapes the glob characters of each path.
 
 ## 3.8.0 — 2026-11-15
 

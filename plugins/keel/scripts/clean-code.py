@@ -179,6 +179,8 @@ FLAT_BLOCK = """// keel clean-code: file size ratchet (size-budget.json, only go
 import {{ readFileSync }} from 'node:fs';
 {sonar_import}const sizeBudget = JSON.parse(readFileSync(new URL('./size-budget.json', import.meta.url), 'utf8'));
 const sizeRule = (max) => ['error', {{ max, skipBlankLines: false, skipComments: false }}];
+// Budget paths are literal: a Next route like [slug] would be a glob character class.
+const literalPath = (file) => file.replace(/[[\\]{{}}()*?!+@]/g, '\\\\$&');
 
 // inside the exported array:
   {{
@@ -189,13 +191,15 @@ const sizeRule = (max) => ['error', {{ max, skipBlankLines: false, skipComments:
       'max-lines-per-function': ['warn', {{ max: 150, skipBlankLines: true, skipComments: true, IIFEs: true }}],
 {sonar_rule}    }},
   }},
-  ...Object.entries(sizeBudget.files).map(([file, max]) => ({{ files: [file], rules: {{ 'max-lines': sizeRule(max) }} }})),
+  ...Object.entries(sizeBudget.files).map(([file, max]) => ({{ files: [literalPath(file)], rules: {{ 'max-lines': sizeRule(max) }} }})),
 """
 
 LEGACY_BLOCK = """// keel clean-code, legacy .eslintrc (a JSON or YAML config can't read the budget: convert it to .eslintrc.js,
 // or write one override per entry of size-budget.json and regenerate them after each --update).
 const sizeBudget = require('./size-budget.json');
 const sizeRule = (max) => ['error', {{ max, skipBlankLines: false, skipComments: false }}];
+// Budget paths are literal: a Next route like [slug] would be a glob character class.
+const literalPath = (file) => file.replace(/[[\\]{{}}()*?!+@]/g, '\\\\$&');
 module.exports = {{
   // ...the existing config
 {sonar_plugin_legacy}  rules: {{
@@ -203,7 +207,7 @@ module.exports = {{
     'max-lines-per-function': ['warn', {{ max: 150, skipBlankLines: true, skipComments: true, IIFEs: true }}],
 {sonar_rule}  }},
   ignorePatterns: sizeBudget.ignore,
-  overrides: Object.entries(sizeBudget.files).map(([file, max]) => ({{ files: [file], rules: {{ 'max-lines': sizeRule(max) }} }})),
+  overrides: Object.entries(sizeBudget.files).map(([file, max]) => ({{ files: [literalPath(file)], rules: {{ 'max-lines': sizeRule(max) }} }})),
 }};
 """
 

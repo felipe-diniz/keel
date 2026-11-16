@@ -514,3 +514,10 @@ def test_hook_is_fast(js, config_dir):
         assert "/keel:clean-code" in out
     print("clean-code.py --hook runs (s):", ["{:.3f}".format(t) for t in times])
     assert min(times) < 0.1, times
+
+
+def test_lint_block_matches_budget_paths_literally_so_next_route_brackets_work(js, config_dir):
+    out = cc(config_dir, js).stdout
+    assert "const literalPath = (file) => file.replace(/[[\\]{}()*?!+@]/g, '\\\\$&');" in out
+    assert "files: [literalPath(file)]" in out
+    assert "files: [file]" not in out
