@@ -19,6 +19,7 @@ CAPS = {
     "skills/product-ui/SKILL.md": 6_000,
     "skills/seo/SKILL.md": 6_000,
     "skills/lgpd/SKILL.md": 6_500,
+    "skills/clean-code/SKILL.md": 6_500,
     "skills/showcase/SKILL.md": 6_000,
 }
 DESCRIPTION_CAP = 520

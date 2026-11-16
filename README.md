@@ -67,6 +67,7 @@ Install it and start working. There is no setup step.
 | Hook | auto-update | At the first session after the install, turns on background auto-update for keel's marketplace in `~/.claude/settings.json`, with a backup. Respects an explicit `off`, managed settings and the project's settings. |
 | Hook | effort | At session start, when nothing decides the effort of the session's model (Claude 5.5 or newer; from the hook input, or else the newest transcript's), saves `high` for it under `modelSettings` in `~/.claude/settings.json`, with a backup; it applies from the next session on. Respects a level saved with `/effort`, `CLAUDE_CODE_EFFORT_LEVEL`, managed settings and the project's settings. |
 | Hook | memory secret guard | Refuses a Write or Edit into memory that contains a credential. |
+| Hook | clean-code | At session start, suggests `/keel:clean-code` when a code project has no size budget or its package is behind. After each Write/Edit, warns the agent when the edited file passes its ceiling (or 1,000 lines without a budget); never blocks. |
 | Output style | `keel:direct` | Proactive outside critical risk and business rules. Starts with the result, no preamble. A user decision becomes a question with the recommended option first. Comes on with the plugin ([direct.md](plugins/keel/output-styles/direct.md)). |
 | Skill | `/keel:coordinate-sessions` | Coordinates fronts in `claude --bg` sessions. |
 | Skill | `/keel:web-craft` | Public sites and landing pages: design that does not look generic and keeps the brand, motion with GSAP, ScrollTrigger and Lenis plus a Three.js scene delivered by default on a new site or redesign (ready recipe in `stack.md`), ideas brought unasked and a share-ready link (`proactive.md`), marketing copy, Core Web Vitals (the thresholds every skill links to) and verification on the rendered page. A project's own design or frontend skill wins where it is more specific. |
@@ -74,10 +75,12 @@ Install it and start working. There is no setup step.
 | Skill | `/keel:web-platform` | The modern web platform for any screen: Baseline as the support policy, forms and autofill, accessibility, INP and navigation (bfcache, Speculation Rules, view transitions), dialog, popover and anchor positioning, modern CSS, Temporal and time zones, client security (CSP, Trusted Types, SRI, sanitizing, passkeys), each mapped to Next.js App Router and React 19, plus React Compiler and react-hook-form pitfalls. Support claims checked on webstatus.dev with the date. |
 | Skill | `/keel:seo` | SEO and AI search of a public site: crawl and indexing, canonical, hreflang, sitemap and robots, structured data with the retired types, AI crawlers and `llms.txt`, E-E-A-T and YMYL health content, images and social cards, and the audit rubric. |
 | Skill | `/keel:lgpd` | Brazil's LGPD, two modes. Teach: legal bases (arts. 7 and 11), health data, data subject rights, controller vs processor in a multi-tenant SaaS, retention, anonymization, international transfer, incident deadlines of Res. CD/ANPD 15/2024, records and RIPD, with the article for each claim and "to validate" for what is counsel's. Hunt: a procedure with grep signals, severity and fix for personal data in logs, alerts, APM and analytics, cross-tenant access, plain-text sensitive fields, exports, missing purge, consent, debug routes and secrets. It does not replace the encarregado (DPO) or counsel. |
+| Skill | `/keel:clean-code` | Clean code with numbers, equal in every project: one responsibility per file, new files up to 1,000 lines with a ratchet for existing ones, CRAP < 10, structural duplication >= 0.8 removed or justified, behavior tests and mutants killed, refactoring with behavior pinned. Measures with Robert C. Martin's crapper, dryer and mutator, pinned by SHA, hash-checked and run without network. A project's own architecture skill wins where more specific. |
 | Skill | `/keel:showcase` | Marketing and release-note media from the project's real screens with seed data: vertical Reel 1080x1920, landscape release video 1920x1080 with WebVTT, post art, carousel and covers, kinetic or word-timed captions, optional ElevenLabs narration and music (a music file works without a key), and the copy method for social posts and release notes with the WhatsApp message. Configured per project in `.claude/showcase.json`; the owner publishes. |
 | Command | `/keel:migrate` | Removes an old manual install and the plugin under its old name (see below). |
 | Command | `/keel:auto-update` | Turns keel's background auto-update on or off, or shows where it stands. A hook turns it on at the first session after the install. |
 | Command | `/keel:memory` | Sets up per-developer versioned memory (see below). |
+| Command | `/keel:clean-code` | Installs or updates the clean-code package in this project (size budget, its script, the .gitignore lines, the lint block) after your confirmation, and the pinned tools in `~/.cache/keel/tools` on a separate yes. |
 
 ## Install
 
@@ -297,9 +300,11 @@ It takes effect in the next session.
 claude plugin uninstall keel@keel
 ```
 
-Only `/keel:migrate` and `/keel:memory` write to your files, and both keep backups. The memory hook can also create your folder and link it on its own, but only in a project that already versions memory and only when nothing has to move; it makes a symlink and never writes settings.
+Only `/keel:migrate`, `/keel:memory` and `/keel:clean-code` write to your files; the first two keep backups. The memory hook can also create your folder and link it on its own, but only in a project that already versions memory and only when nothing has to move; it makes a symlink and never writes settings.
 
 Uninstalling leaves the memory links in place, so auto memory keeps writing to `.claude/memory/<you>/`. If `/keel:memory` fell back to `autoMemoryDirectory` in `.claude/settings.local.json`, that key stays too.
+
+`/keel:clean-code` writes `size-budget.json`, `scripts/size-budget.py`, `.gitignore` lines and, with your yes, the lint block; they stay after uninstalling. The tools live in `~/.cache/keel/tools` (`rm -rf` it to remove them).
 
 ## Known limitations
 
@@ -310,6 +315,7 @@ Uninstalling leaves the memory links in place, so auto memory keeps writing to `
 - A plugin agent ignores `hooks:` in its frontmatter. That is why the gate's Bash guard is a plugin hook that filters on the payload's `agent_type`.
 - The secret guard sees only Write and Edit. A memory written through Bash is not inspected.
 - The memory link relies on symlinks. On Windows without symlink permission, `/keel:memory` falls back to `autoMemoryDirectory`; the hook does not, and only suggests the command.
+- The clean-code tools need `uv` and Python 3.12 (installed by uv), run on macOS and Linux (x86_64, arm64), and measure TypeScript/JavaScript and Python; the Vitest and pytest coverage paths follow the tools' documented flags and were not measured on a real project yet. On Linux without bubblewrap, `unshare` leaves loopback down, so a test that binds localhost fails; without either, measuring needs an explicit `--no-sandbox`.
 
 ## Structure
 
@@ -318,7 +324,7 @@ Uninstalling leaves the memory links in place, so auto memory keeps writing to `
 plugins/keel/
   .claude-plugin/plugin.json          name and version
   agents/                             the five agents
-  hooks/hooks.json                    rules and memory (SessionStart); gate, Bash guard, secret guard (PreToolUse)
+  hooks/hooks.json                    rules, memory and clean-code (SessionStart); gate, Bash guard, secret guard (PreToolUse); size (PostToolUse)
   scripts/                            the hooks and the commands, in Python with no dependencies
     rules.py                          puts rules.md in context, and the migration notice
     memory.py                         /keel:memory and the SessionStart memory hook
@@ -326,6 +332,14 @@ plugins/keel/
     critical-review-gate.py           the gate's briefing and pass count
     review-bash-guard.py              the read-only Bash inside the gate
     migrate.py                        /keel:migrate
+    clean-code.py                     /keel:clean-code and the SessionStart clean-code hook
+    clean-code-size.py                the size warning after each edit (PostToolUse)
+    size-budget.py                    the ratchet script copied into projects, and the hook's library
+    clean-code-measure.py             crap, dry, mutate, status, install
+    clean-code-runners.py             test discovery and coverage per runner (Jest, Vitest, pytest)
+    clean-code-tools.py, .json        pins, install, integrity checks and the network sandbox
+    clean-code-shim.py                runs inside the tools' environment
+    clean-code-requirements.txt       hash-pinned dependencies of the tools
   rules.md                            what goes into context at session start
   skills/coordinate-sessions/         skill, templates and references
   skills/web-craft/                   public-site skill: core and references (stack, proactive, design, copy, motion, three, performance, verification)
@@ -333,13 +347,15 @@ plugins/keel/
   skills/web-platform/                web-platform skill: core and references (baseline, forms, accessibility, ui-primitives, performance, security, dates, next-react, react-pitfalls)
   skills/seo/                         SEO skill: core and references (crawl-index, structured-data, ai-search, eeat, images-social, audit)
   skills/lgpd/                        LGPD skill: core and references (law, lifecycle, incident, hunt-logs, hunt-isolation, hunt-storage)
+  skills/clean-code/                  clean-code skill: core and references (size, measure, refactor, tools)
   skills/showcase/                    media skill: core, references (setup, config, capture, storyboard, audio, social-post, release-notes) and scripts (doctor, capture, compose, audio, art)
   output-styles/direct.md             response style
   commands/migrate.md                 /keel:migrate
   commands/memory.md                  /keel:memory
+  commands/clean-code.md              /keel:clean-code
 ```
 
-To change something: edit it in `plugins/keel/`, bump `version` in `plugin.json` and push. Each script except `rules.py` and `critical-review-gate.py` has a self-test: `python3 plugins/keel/scripts/<script> --self-test`.
+To change something: edit it in `plugins/keel/`, bump `version` in `plugin.json` and push. Each script except `rules.py` and `critical-review-gate.py` has a self-test: `python3 plugins/keel/scripts/<script> --self-test`; the clean-code scripts are covered by `tests/test_clean_code_*.py`.
 
 ## License
 
