@@ -4,6 +4,8 @@ A [Claude Code](https://code.claude.com) plugin that ships a ready-made working 
 
 Install it and start working. There is no setup step.
 
+![keel in a Claude Code session](docs/media/demo.gif)
+
 ## Why use it
 
 **Quality where it matters**
