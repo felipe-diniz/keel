@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.8.1 — 2026-11-16
+
+- **`clean-code-measure.py` fixes found on first real use.** `--help` prints the usage instead of measuring a file named `--help`; an unknown option stops with its name; `crap` creates `.metrics/keel/coverage` on a fresh project instead of crashing; `dry` with no supported file reports no pairs instead of crashing on the missing snapshot.
+
 ## 3.8.0 — 2026-11-15
 
 - **`clean-code`, the same standard in every project.** A new skill with the floor every project shares: one responsibility per file, new files up to 1,000 lines with a ratchet for the ones already above, functions that do one thing with grep-able names, CRAP < 10, structural duplication >= 0.8 removed or justified, behavior tests, surviving mutants killed, refactoring with behavior pinned first. Principles adapted from Robert C. Martin's ub-mode (MIT); a project's own architecture skill wins where it is more specific. Function length (150) and cognitive complexity (15) stay lint warnings; CRAP decides.

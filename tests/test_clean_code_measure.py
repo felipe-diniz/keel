@@ -659,3 +659,25 @@ def test_command_mutate_cleans_workers_even_when_a_file_raises(tmp_path, monkeyp
     with pytest.raises(measure.Stop):
         measure.command_mutate(measure.Options(["mutate", "a.ts"]), str(tmp_path), [])
     assert not (workers / "run-new").exists()
+
+
+def test_main_help_prints_usage_and_runs_no_tool(capsys, monkeypatch):
+    monkeypatch.setattr(measure, "project_root", lambda: pytest.fail("help must not touch the project"))
+    assert measure.main(["dry", "--help"]) == 0
+    assert "crap" in capsys.readouterr().out
+
+
+def test_main_unknown_option_stops_instead_of_measuring_it_as_a_path(capsys, monkeypatch):
+    monkeypatch.setattr(measure, "project_root", lambda: pytest.fail("an unknown option must not reach the tools"))
+    assert measure.main(["crap", "--verbose", "src/a.ts"]) == 64
+    assert "--verbose" in capsys.readouterr().err
+
+
+def test_merged_lcov_creates_its_folder_on_a_fresh_project(tmp_path):
+    lcov = touch(tmp_path / "one.info", "SF:a.ts\nend_of_record\n")
+    target = measure.merged_lcov(str(tmp_path), [str(lcov)])
+    assert open(target, encoding="utf-8").read() == "SF:a.ts\nend_of_record\n"
+
+
+def test_dry_pairs_without_snapshot_is_no_pairs(tmp_path):
+    assert measure.dry_pairs(str(tmp_path)) == []

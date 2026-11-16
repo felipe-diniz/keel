@@ -68,6 +68,7 @@ class Options:
         self.command = argv[0] if argv else "status"
         self.paths, self.test, self.diff, self.budget = [], None, None, 600.0
         self.min_lines, self.json, self.no_sandbox = "4", False, False
+        self.help, self.unknown = False, []
         args = list(argv[1:])
         while args:
             self.take(args.pop(0), args)
@@ -80,6 +81,10 @@ class Options:
             setattr(self, self.SWITCHES[arg], True)
         elif arg == "--diff":
             self.diff = diff_base(args)
+        elif arg in ("-h", "--help"):
+            self.help = True
+        elif arg.startswith("-"):
+            self.unknown.append(arg)
         else:
             self.paths.append(os.path.abspath(arg))
 
@@ -159,6 +164,7 @@ def run_tool(tool, lcov, args, root, prefix, timeout=None):
 
 def merged_lcov(root, paths):
     target = os.path.join(root, ".metrics", "keel", "coverage", "merged.lcov")
+    os.makedirs(os.path.dirname(target), exist_ok=True)
     with open(target, "w", encoding="utf-8") as out:
         for path in paths:
             if os.path.isfile(path):
@@ -215,7 +221,10 @@ DRY_ENTRY = re.compile(r':score ([\d.]+)\s+:language "(\w+)"\s+:left \{:file "((
 
 
 def dry_pairs(root):
-    with open(os.path.join(root, ".metrics", "dry.edn"), encoding="utf-8") as handle:
+    snapshot = os.path.join(root, ".metrics", "dry.edn")
+    if not os.path.isfile(snapshot):
+        return []
+    with open(snapshot, encoding="utf-8") as handle:
         text = handle.read()
     pairs = []
     for score, language, lf, ls, le, rf, rs, re_ in DRY_ENTRY.findall(text):
@@ -376,8 +385,14 @@ def main(argv):
     options = Options(argv)
     if options.command in ("status", "install"):
         return tools.main([options.command])
+    if options.help or options.command in ("-h", "--help", "help"):
+        print(__doc__)
+        return 0
     if options.command not in COMMANDS:
         print(__doc__)
+        return 64
+    if options.unknown:
+        print("Stopped: unknown option {}".format(" ".join(options.unknown)), file=sys.stderr)
         return 64
     try:
         root = project_root()
